@@ -116,7 +116,7 @@ class StackTracker(QtGui.QMainWindow):
         self.connect(self.worker, QtCore.SIGNAL('newAnswer'), self.newAnswer)
         self.connect(self.worker, QtCore.SIGNAL('newComment'), self.newComment)
         self.worker.start()
-
+        
     def newAnswer(self, question):
         self.popupUrl = question.url
         self.notify("New answer(s): %s" % question.title)
@@ -148,6 +148,7 @@ class StackTracker(QtGui.QMainWindow):
         self.worker.updateTrackingList(self.tracking_list)
 
     def addQuestion(self):
+        self.notify("New comment(s): What is the single most influential book every programmer should read?")
         id = self.question_input.text()
         try:
             int(id)
@@ -180,7 +181,9 @@ class WorkerThread(QtCore.QThread):
         self.exec_()
 
     def __del__(self):
-        self.wait()
+        print "del"
+        self.exit()
+        self.terminate()
 
     def updateTrackingList(self, tracking_list):
         self.tracking_list = tracking_list
@@ -216,4 +219,6 @@ if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
     st = StackTracker(app)
     st.show()
-    sys.exit(app.exec_())
+    app.exec_()
+    del st
+    sys.exit()
