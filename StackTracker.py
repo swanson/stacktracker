@@ -6,6 +6,7 @@ from datetime import datetime, date
 import time
 import os
 import copy
+import re
 
 class QuestionItem(QtGui.QWidget):
     def __init__(self, title, id, site):
@@ -44,32 +45,41 @@ class QuestionItem(QtGui.QWidget):
 
 
 class Question():
-    def __init__(self, question_id):
-
+    def __init__(self, question_id, site):
+        self.last_queried = datetime.utcnow()
         self.id = question_id
+        self.site = site
         
-        api_base = 'http://api.stackoverflow.com/0.8/questions/'
-        base = 'http://stackoverflow.com/questions/'
+        api_base = 'http://api.%s/%s' \
+                        % (self.site, StackTracker.API_VER)
+        base = 'http://%s/questions/' % (self.site)
         self.url = base + self.id
+
+        self.answers_url = '%s/questions/%s/answers%s' \
+                        % (api_base, self.id, StackTracker.API_KEY)
+        self.comments_url = '%s/questions/%s/comments%s' \
+                        % (api_base, self.id, StackTracker.API_KEY)
         
-        json_url = api_base + self.id + '/?key=Jv8tIPTrRUOqRe-5lk4myw'
+        json_url = '%s/questions/%s/%s' \
+                        % (api_base, self.id, StackTracker.API_KEY)
         so_data = json.loads(urllib2.urlopen(json_url).read())
         self.title = so_data['questions'][0]['title']
         if len(self.title) > 50:
             self.title = self.title[:48] + '...'
-
-        self.last_queried = datetime.utcnow()
-
+        
     def __repr__(self):
         return "%s: %s" % (self.id, self.title)
 
 class StackTracker(QtGui.QMainWindow):
     
-    SITES = {'StackOverflow':'#ff9900',
-            'ServerFault':'#ea292c',
-            'SuperUser':'#00bff3',
-            'Meta':'#a6a6a6',
+    SITES = {'stackoverflow.com':'#ff9900',
+            'serverfault.com':'#ea292c',
+            'superuser.com':'#00bff3',
+            'meta.stackoverflow.com':'#a6a6a6',
             }
+
+    API_KEY = '?key=Jv8tIPTrRUOqRe-5lk4myw'
+    API_VER = '0.8'
 
     def __init__(self, parent = None):
         QtGui.QMainWindow.__init__(self)
@@ -84,7 +94,7 @@ class StackTracker(QtGui.QMainWindow):
 
         self.question_input = QtGui.QLineEdit(self)
         self.question_input.setGeometry(QtCore.QRect(15, 360, 220, 30))
-        self.question_input.setText("Enter Question ID...")
+        self.question_input.setText("Enter Question URL...")
         #not supported until Qt4.7 
         #self.question_input.setPlaceholderText("Enter SO question ID...")
 
@@ -103,16 +113,16 @@ class StackTracker(QtGui.QMainWindow):
 
         self.tracking_list = []
  
-        self.test_questions = ['1711','2349378']
-        for id in self.test_questions:
-            q = Question(id)
+        self.test_questions = [('1711', 'stackoverflow.com'),
+                                ('4714', 'superuser.com'),
+                                ('45734', 'serverfault.com'),
+                                ('9134', 'meta.stackoverflow.com'),
+                                ]
+        for item in self.test_questions:
+            q = Question(item[0], item[1])
             self.tracking_list.append(q)
 
         self.displayQuestions()
-
-        key = "Jv8tIPTrRUOqRe-5lk4myw"
-        self.answers_url = "http://api.stackoverflow.com/0.8/questions/2901879/answers?key=%s" % key
-        self.comments_url = "http://api.stackoverflow.com/0.8/questions/2901879/comments?key=%s" % key
 
         path = os.getcwd() 
         self.notifier = QtGui.QSystemTrayIcon(QtGui.QIcon(path+'/st.png'), self)
@@ -123,7 +133,7 @@ class StackTracker(QtGui.QMainWindow):
         self.connect(self.worker, QtCore.SIGNAL('newAnswer'), self.newAnswer)
         self.connect(self.worker, QtCore.SIGNAL('newComment'), self.newComment)
         self.worker.start()
-        
+    
     def newAnswer(self, question):
         self.popupUrl = question.url
         self.notify("New answer(s): %s" % question.title)
@@ -142,7 +152,7 @@ class StackTracker(QtGui.QMainWindow):
             item = QtGui.QListWidgetItem(self.display_list)
             item.setSizeHint(QtCore.QSize(100, 50))
             self.display_list.addItem(item)
-            qitem = QuestionItem(question.title, question.id, 'StackOverflow')
+            qitem = QuestionItem(question.title, question.id, question.site)
             self.connect(qitem, QtCore.SIGNAL('removeQuestion'), self.removeQuestion)
             self.display_list.setItemWidget(item, qitem)
             n = n + 1
@@ -154,22 +164,38 @@ class StackTracker(QtGui.QMainWindow):
         self.displayQuestions()
         self.worker.updateTrackingList(self.tracking_list)
 
-    def addQuestion(self):
-        id = self.question_input.text()
+    def extractDetails(self, url):
+        regex = re.compile("""(?:http://)?(?:www\.)?
+                                (?P<site>(?:[A-Za-z\.])*\.[A-Za-z]*)
+                                /.*?
+                                (?P<id>[0-9]+)
+                                /.*""", re.VERBOSE)
+        match = regex.match(url)
+       
         try:
-            int(id)
-        except ValueError:
-            self.question_input.setText("Enter Question ID...")
+            site = match.group('site')
+            id = match.group('id')
+        except IndexError:
+            return None
+        return id, site
+
+    def addQuestion(self):
+        url = self.question_input.text()
+        details = self.extractDetails(str(url))
+        if details:
+            id, site = details
+        else:
+            #bad input
             return
-        if len(id) > 0:
-            #todo: check if question is already being tracked :P
-            q = Question(str(id))
+        if id not in self.tracking_list:
+            q = Question(id, site)
             self.tracking_list.append(q)
             self.displayQuestions()
             self.worker.updateTrackingList(self.tracking_list)
         else:
+            #question already being tracked
             return
-        self.question_input.setText("Enter Question ID...")
+        self.question_input.setText("Enter Question URL...")
 
     def notify(self, msg):
         self.notifier.showMessage("StackTracker", msg, 20000)
@@ -187,7 +213,6 @@ class WorkerThread(QtCore.QThread):
         self.exec_()
 
     def __del__(self):
-        print "del"
         self.exit()
         self.terminate()
 
@@ -195,23 +220,16 @@ class WorkerThread(QtCore.QThread):
         self.tracking_list = tracking_list
 
     def fetch(self):
-        answers_base = 'http://api.stackoverflow.com/0.8/questions/%s/answers?key=Jv8tIPTrRUOqRe-5lk4myw'
-        comments_base = 'http://api.stackoverflow.com/0.8/questions/%s/comments?key=Jv8tIPTrRUOqRe-5lk4myw'
-
         tracked_questions = copy.deepcopy(self.tracking_list)
         for question in tracked_questions:
-            answers_url = answers_base % question.id
-            so_data = json.loads(urllib2.urlopen(answers_url).read())
-            
+            so_data = json.loads(urllib2.urlopen(question.answers_url).read())
             for answer in so_data['answers']:
                 updated = datetime.utcfromtimestamp(answer['creation_date'])
                 if updated > question.last_queried:
                     self.emit(QtCore.SIGNAL('newAnswer'), question)
                     question.last_queried = updated
 
-            comments_url = comments_base % question.id
-            so_data = json.loads(urllib2.urlopen(comments_url).read())
-            
+            so_data = json.loads(urllib2.urlopen(question.comments_url).read())
             for comment in so_data['comments']:
                 updated = datetime.utcfromtimestamp(comment['creation_date'])
                 if updated > question.last_queried:
