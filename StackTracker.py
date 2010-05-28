@@ -8,7 +8,7 @@ import os
 import copy
 
 class QuestionItem(QtGui.QWidget):
-    def __init__(self, title, id):
+    def __init__(self, title, id, site):
         QtGui.QListWidgetItem.__init__(self)
 
         self.setGeometry(QtCore.QRect(0,0,325,50))
@@ -29,7 +29,8 @@ class QuestionItem(QtGui.QWidget):
         self.stop_button.setText("X")
         self.stop_button.clicked.connect(self.remove)
 
-        self.label.setStyleSheet("background: #ff9900; border: 1px solid black; border-radius: 10px; margin: 2px; color: white;")
+        background = StackTracker.SITES[site]
+        self.label.setStyleSheet("background: %s; border: 1px solid black; border-radius: 10px; margin: 2px; color: white;" % (background))
         self.stop_button.setStyleSheet("QPushButton{background: #cccccc; border: 1px solid black; border-radius: 5px; color: white;} QPushButton:hover{background: #c03434;}")
 
         self.label.setText(title)
@@ -57,10 +58,19 @@ class Question():
         if len(self.title) > 50:
             self.title = self.title[:48] + '...'
 
+        self.last_queried = datetime.utcnow()
+
     def __repr__(self):
         return "%s: %s" % (self.id, self.title)
 
 class StackTracker(QtGui.QMainWindow):
+    
+    SITES = {'StackOverflow':'#ff9900',
+            'ServerFault':'#ea292c',
+            'SuperUser':'#00bff3',
+            'Meta':'#a6a6a6',
+            }
+
     def __init__(self, parent = None):
         QtGui.QMainWindow.__init__(self)
         self.setWindowTitle("StackTracker")
@@ -73,7 +83,6 @@ class StackTracker(QtGui.QMainWindow):
         self.display_list.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
 
         self.question_input = QtGui.QLineEdit(self)
-        self.question_input.setValidator(QtGui.QIntValidator(self))
         self.question_input.setGeometry(QtCore.QRect(15, 360, 220, 30))
         self.question_input.setText("Enter Question ID...")
         #not supported until Qt4.7 
@@ -105,8 +114,6 @@ class StackTracker(QtGui.QMainWindow):
         self.answers_url = "http://api.stackoverflow.com/0.8/questions/2901879/answers?key=%s" % key
         self.comments_url = "http://api.stackoverflow.com/0.8/questions/2901879/comments?key=%s" % key
 
-        self.origin_time = datetime.utcnow()
-        
         path = os.getcwd() 
         self.notifier = QtGui.QSystemTrayIcon(QtGui.QIcon(path+'/st.png'), self)
         self.notifier.messageClicked.connect(self.popupClicked)
@@ -135,7 +142,7 @@ class StackTracker(QtGui.QMainWindow):
             item = QtGui.QListWidgetItem(self.display_list)
             item.setSizeHint(QtCore.QSize(100, 50))
             self.display_list.addItem(item)
-            qitem = QuestionItem(question.title, question.id)
+            qitem = QuestionItem(question.title, question.id, 'StackOverflow')
             self.connect(qitem, QtCore.SIGNAL('removeQuestion'), self.removeQuestion)
             self.display_list.setItemWidget(item, qitem)
             n = n + 1
@@ -148,7 +155,6 @@ class StackTracker(QtGui.QMainWindow):
         self.worker.updateTrackingList(self.tracking_list)
 
     def addQuestion(self):
-        self.notify("New comment(s): What is the single most influential book every programmer should read?")
         id = self.question_input.text()
         try:
             int(id)
@@ -156,6 +162,7 @@ class StackTracker(QtGui.QMainWindow):
             self.question_input.setText("Enter Question ID...")
             return
         if len(id) > 0:
+            #todo: check if question is already being tracked :P
             q = Question(str(id))
             self.tracking_list.append(q)
             self.displayQuestions()
@@ -171,7 +178,6 @@ class WorkerThread(QtCore.QThread):
     def __init__(self, tracking_list, parent = None):
         QtCore.QThread.__init__(self, parent)
         self.tracking_list = tracking_list
-        self.origin_time = datetime.utcnow()
 
     def run(self):
         self.fetch()
@@ -199,18 +205,18 @@ class WorkerThread(QtCore.QThread):
             
             for answer in so_data['answers']:
                 updated = datetime.utcfromtimestamp(answer['creation_date'])
-                if updated > self.origin_time:
+                if updated > question.last_queried:
                     self.emit(QtCore.SIGNAL('newAnswer'), question)
+                    question.last_queried = updated
 
             comments_url = comments_base % question.id
             so_data = json.loads(urllib2.urlopen(comments_url).read())
             
             for comment in so_data['comments']:
                 updated = datetime.utcfromtimestamp(comment['creation_date'])
-                if updated > self.origin_time:
+                if updated > question.last_queried:
                     self.emit(QtCore.SIGNAL('newComment'), question)
-
-        self.origin_time = datetime.utcnow()
+                    question.last_queried = updated
 
 if __name__ == "__main__":
     
