@@ -1,9 +1,10 @@
 from PyQt4 import QtCore, QtGui, QtWebKit
 from datetime import datetime, date
-import json
+try:
+    import json
+except ImportError:
+    import simplejson as json
 import urllib2
-from datetime import datetime, date
-import time
 import os
 import copy
 import re
