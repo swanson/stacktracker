@@ -8,6 +8,7 @@ import urllib2
 import os
 import copy
 import re
+import time
 
 class QuestionItem(QtGui.QWidget):
     def __init__(self, title, id, site):
@@ -46,7 +47,7 @@ class QuestionItem(QtGui.QWidget):
 
 
 class Question():
-    def __init__(self, question_id, site):
+    def __init__(self, question_id, site, title = None):
         self.last_queried = datetime.utcnow()
         self.id = question_id
         self.site = site
@@ -63,13 +64,19 @@ class Question():
         
         json_url = '%s/questions/%s/%s' \
                         % (api_base, self.id, StackTracker.API_KEY)
-        so_data = json.loads(urllib2.urlopen(json_url).read())
-        self.title = so_data['questions'][0]['title']
+
+        if title is None:
+            so_data = json.loads(urllib2.urlopen(json_url).read())
+            self.title = so_data['questions'][0]['title']
+        else:
+            self.title = title
+
         if len(self.title) > 50:
             self.title = self.title[:48] + '...'
         
     def __repr__(self):
         return "%s: %s" % (self.id, self.title)
+
 
 class StackTracker(QtGui.QMainWindow):
     
@@ -85,6 +92,7 @@ class StackTracker(QtGui.QMainWindow):
     def __init__(self, parent = None):
         QtGui.QMainWindow.__init__(self)
         self.setWindowTitle("StackTracker")
+        self.closeEvent = self.cleanUp
 
         self.setGeometry(QtCore.QRect(0, 0, 325, 400))
         self.setFixedSize(QtCore.QSize(325,400))
@@ -114,14 +122,7 @@ class StackTracker(QtGui.QMainWindow):
 
         self.tracking_list = []
  
-        self.test_questions = [('1711', 'stackoverflow.com'),
-                                ('4714', 'superuser.com'),
-                                ('45734', 'serverfault.com'),
-                                ('9134', 'meta.stackoverflow.com'),
-                                ]
-        for item in self.test_questions:
-            q = Question(item[0], item[1])
-            self.tracking_list.append(q)
+        self.deserializeQuestions() #load persisted questions from tracking.json
 
         self.displayQuestions()
 
@@ -134,6 +135,30 @@ class StackTracker(QtGui.QMainWindow):
         self.connect(self.worker, QtCore.SIGNAL('newAnswer'), self.newAnswer)
         self.connect(self.worker, QtCore.SIGNAL('newComment'), self.newComment)
         self.worker.start()
+
+    def cleanUp(self, event):
+        self.serializeQuestions()
+
+    def serializeQuestions(self):
+        datetime_to_json = lambda obj: time.mktime(obj.timetuple()) if isinstance(obj, datetime) else None
+        a = []
+        for q in self.tracking_list:
+            a.append(q.__dict__)
+ 
+        with open('tracking.json', 'w') as fp:
+                json.dump({'questions':a}, fp, default = datetime_to_json, indent = 4)
+
+    def deserializeQuestions(self):
+        try:
+            with open('tracking.json', 'r') as fp:
+                data = fp.read()
+        except EnvironmentError:
+            #no tracking.json file
+            return
+
+        question_data = json.loads(data)
+        for q in question_data['questions']:
+            self.tracking_list.append(Question(q['id'], q['site'], q['title']))
     
     def newAnswer(self, question):
         self.popupUrl = question.url
