@@ -244,8 +244,7 @@ class StackTracker(QtGui.QMainWindow):
         else:
             #question already being tracked
             return
-        self.question_input.setText("Enter Question URL...")
-
+    
     def notify(self, msg):
         self.notifier.showMessage("StackTracker", msg, 20000)
 
