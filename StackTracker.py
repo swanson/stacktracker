@@ -11,6 +11,24 @@ import re
 import time
 import calendar
 
+class LineEditWithPlaceholder(QtGui.QLineEdit):
+    def __init__(self, parent = None):
+        QtGui.QLineEdit.__init__(self, parent)
+        self.placeholder = None
+
+    def setPlaceholderText(self, text):
+        self.placeholder = text
+        self.update()
+
+    def paintEvent(self, event):
+        QtGui.QLineEdit.paintEvent(self, event)
+        if self.placeholder and not self.hasFocus() and not self.text():
+            painter = QtGui.QPainter(self)
+            painter.setPen(QtGui.QPen(QtCore.Qt.darkGray))
+            painter.drawText(QtCore.QRect(8, 1, self.width(), self.height()), QtCore.Qt.AlignVCenter, self.placeholder)
+            painter.end()
+
+
 class QuestionItem(QtGui.QWidget):
     def __init__(self, title, id, site):
         QtGui.QListWidgetItem.__init__(self)
@@ -106,11 +124,9 @@ class StackTracker(QtGui.QMainWindow):
         self.display_list.setStyleSheet("QListWidget{show-decoration-selected: 0; background: #818185;}")
         self.display_list.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
 
-        self.question_input = QtGui.QLineEdit(self)
+        self.question_input = LineEditWithPlaceholder(self)
         self.question_input.setGeometry(QtCore.QRect(15, 360, 220, 30))
-        self.question_input.setText("Enter Question URL...")
-        #not supported until Qt4.7 
-        #self.question_input.setPlaceholderText("Enter SO question ID...")
+        self.question_input.setPlaceholderText("Enter Question URL...")
 
         font = QtGui.QFont()
         font.setPointSize(12)
@@ -203,7 +219,8 @@ class StackTracker(QtGui.QMainWindow):
                                 (?P<id>[0-9]+)
                                 /.*""", re.VERBOSE)
         match = regex.match(url)
-       
+        if match is None:
+            return None
         try:
             site = match.group('site')
             id = match.group('id')
