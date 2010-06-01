@@ -9,6 +9,7 @@ import os
 import copy
 import re
 import time
+import calendar
 
 class QuestionItem(QtGui.QWidget):
     def __init__(self, title, id, site):
@@ -47,8 +48,7 @@ class QuestionItem(QtGui.QWidget):
 
 
 class Question():
-    def __init__(self, question_id, site, title = None):
-        self.last_queried = datetime.utcnow()
+    def __init__(self, question_id, site, title = None, last_queried = None):
         self.id = question_id
         self.site = site
         
@@ -73,6 +73,11 @@ class Question():
 
         if len(self.title) > 50:
             self.title = self.title[:48] + '...'
+
+        if last_queried is None:
+            self.last_queried = datetime.utcnow()
+        else:
+            self.last_queried = datetime.utcfromtimestamp(last_queried)
         
     def __repr__(self):
         return "%s: %s" % (self.id, self.title)
@@ -140,7 +145,7 @@ class StackTracker(QtGui.QMainWindow):
         self.serializeQuestions()
 
     def serializeQuestions(self):
-        datetime_to_json = lambda obj: time.mktime(obj.timetuple()) if isinstance(obj, datetime) else None
+        datetime_to_json = lambda obj: calendar.timegm(obj.utctimetuple()) if isinstance(obj, datetime) else None
         a = []
         for q in self.tracking_list:
             a.append(q.__dict__)
@@ -158,7 +163,8 @@ class StackTracker(QtGui.QMainWindow):
 
         question_data = json.loads(data)
         for q in question_data['questions']:
-            self.tracking_list.append(Question(q['id'], q['site'], q['title']))
+            rebuilt_question = Question(q['id'], q['site'], q['title'], q['last_queried'])
+            self.tracking_list.append(rebuilt_question)
     
     def newAnswer(self, question):
         self.popupUrl = question.url
@@ -246,21 +252,38 @@ class WorkerThread(QtCore.QThread):
         self.tracking_list = tracking_list
 
     def fetch(self):
-        tracked_questions = copy.deepcopy(self.tracking_list)
-        for question in tracked_questions:
+        #todo: better handling of multiple new answers with regards
+        #notifications and timestamps
+
+        #todo: sort by newest answers and break out once we get to the old answers
+        #to speed up
+        for question in self.tracking_list:
+            new_answers = False
+            new_comments = False
+            most_recent = question.last_queried
+            
             so_data = json.loads(urllib2.urlopen(question.answers_url).read())
             for answer in so_data['answers']:
                 updated = datetime.utcfromtimestamp(answer['creation_date'])
                 if updated > question.last_queried:
-                    self.emit(QtCore.SIGNAL('newAnswer'), question)
-                    question.last_queried = updated
+                    new_answers = True
+                    if updated > most_recent:
+                        most_recent = updated
 
             so_data = json.loads(urllib2.urlopen(question.comments_url).read())
             for comment in so_data['comments']:
                 updated = datetime.utcfromtimestamp(comment['creation_date'])
                 if updated > question.last_queried:
-                    self.emit(QtCore.SIGNAL('newComment'), question)
-                    question.last_queried = updated
+                    new_comments = True
+                    if updated > most_recent:
+                        most_recent = updated
+            
+            if new_answers:
+                self.emit(QtCore.SIGNAL('newAnswer'), question)
+            if new_comments:
+                self.emit(QtCore.SIGNAL('newComment'), question)
+
+            question.last_queried = most_recent
 
 if __name__ == "__main__":
     
