@@ -142,7 +142,6 @@ class QSpinBoxRadioButton(QtGui.QRadioButton):
     def setSingleStep(self, step):
         self.spinbox.setSingleStep(step)
 
-
 class OptionsDialog(QtGui.QDialog):
     def __init__(self, parent = None):
         QtGui.QDialog.__init__(self, parent)
@@ -247,19 +246,30 @@ class StackTracker(QtGui.QMainWindow):
         self.track_button.setFont(font)
         self.track_button.setStyleSheet("QPushButton{background: #e2e2e2; border: 1px solid #888888; color: black;} QPushButton:hover{background: #d6d6d6;}")
         
-        self.options_button = QtGui.QPushButton(self)
-        self.options_button.setGeometry(QtCore.QRect(300, 360, 25, 25))
-        self.options_button.clicked.connect(self.showOptions)
-
         self.tracking_list = []
  
         self.deserializeQuestions() #load persisted questions from tracking.json
 
         self.displayQuestions()
 
+
         path = os.getcwd() 
         self.notifier = QtGui.QSystemTrayIcon(QtGui.QIcon(path+'/st.png'), self)
         self.notifier.messageClicked.connect(self.popupClicked)
+        self.notifier.setToolTip('StackTracker')
+        
+        self.tray_menu = QtGui.QMenu()
+        self.show_action = QtGui.QAction('Show', None)
+        self.options_action = QtGui.QAction('Options', None)
+        self.about_action = QtGui.QAction('About', None)
+        self.exit_action = QtGui.QAction('Exit', None)
+        self.tray_menu.addAction(self.show_action)
+        self.tray_menu.addAction(self.options_action)
+        self.tray_menu.addAction(self.about_action)
+        self.tray_menu.addSeparator()
+        self.tray_menu.addAction(self.exit_action)
+
+        self.notifier.setContextMenu(self.tray_menu)        
         self.notifier.show()
 
         self.worker = WorkerThread(self.tracking_list)
