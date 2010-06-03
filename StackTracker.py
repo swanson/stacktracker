@@ -105,6 +105,106 @@ class Question():
     def __repr__(self):
         return "%s: %s" % (self.id, self.title)
 
+class QSpinBoxRadioButton(QtGui.QRadioButton):
+    def __init__(self, prefix = '', suffix = '', parent = None):
+        QtGui.QRadioButton.__init__(self, parent)
+        self.prefix = QtGui.QLabel(prefix)
+        self.suffix = QtGui.QLabel(suffix)
+
+        self.spinbox = QtGui.QSpinBox()
+        self.spinbox.setEnabled(self.isDown())
+        self.toggled.connect(self.spinbox.setEnabled)
+
+        self.layout = QtGui.QHBoxLayout()
+        self.layout.addWidget(self.prefix)
+        self.layout.addWidget(self.spinbox)
+        self.layout.addWidget(self.suffix)
+        self.layout.addStretch(2)
+        self.layout.setContentsMargins(25, 0, 0, 0)
+
+        self.setLayout(self.layout)
+
+    def setPrefix(self, p):
+        self.prefix.setText(p)
+
+    def setSuffix(self, s):
+        self.suffix.setText(s)
+
+    def setSpinBoxSuffix(self, text):
+        self.spinbox.setSuffix(" %s" % text)
+
+    def setMinimum(self, value):
+        self.spinbox.setMinimum(value)
+
+    def setMaximum(self, value):
+        self.spinbox.setMaximum(value)
+
+    def setSingleStep(self, step):
+        self.spinbox.setSingleStep(step)
+
+
+class OptionsDialog(QtGui.QDialog):
+    def __init__(self, parent = None):
+        QtGui.QDialog.__init__(self, parent)
+        self.setFixedSize(QtCore.QSize(400,250))
+        self.setWindowTitle('Options')
+
+        self.layout = QtGui.QVBoxLayout()
+
+        self.auto_remove = QtGui.QGroupBox("Automatically remove questions?", self)
+        self.auto_remove.setCheckable(True)
+        self.auto_remove.setChecked(False)
+        
+        self.accepted_option = QtGui.QRadioButton("When an answer has been accepted")
+        
+        self.time_option = QSpinBoxRadioButton('After','of being added')
+        self.time_option.setMinimum(1)
+        self.time_option.setMaximum(1000)
+        self.time_option.setSingleStep(1)
+        self.time_option.setSpinBoxSuffix(" hour(s)")
+        
+        self.inactivity_option = QSpinBoxRadioButton('After', 'of inactivity')
+        self.inactivity_option.setMinimum(1)
+        self.inactivity_option.setMaximum(1000)
+        self.inactivity_option.setSingleStep(1)
+        self.inactivity_option.setSpinBoxSuffix(" hour(s)")
+
+        self.auto_layout = QtGui.QVBoxLayout()
+        self.auto_layout.addWidget(self.accepted_option)
+        self.auto_layout.addWidget(self.time_option)
+        self.auto_layout.addWidget(self.inactivity_option)
+ 
+        self.auto_remove.setLayout(self.auto_layout)
+
+        self.update_interval = QtGui.QGroupBox("Update Interval", self)
+        self.update_input = QtGui.QSpinBox()
+        self.update_input.setMinimum(30)
+        self.update_input.setMaximum(86400)
+        self.update_input.setSingleStep(15)
+        self.update_input.setSuffix(" seconds")
+        self.update_input.setPrefix("Check for updates every ")
+
+        self.update_layout = QtGui.QVBoxLayout()
+        self.update_layout.addWidget(self.update_input)
+        
+        self.update_interval.setLayout(self.update_layout)
+
+        self.buttons = QtGui.QDialogButtonBox(QtGui.QDialogButtonBox.Cancel | QtGui.QDialogButtonBox.Save)
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
+
+        self.layout.addWidget(self.auto_remove)
+        self.layout.addWidget(self.update_interval)
+        self.layout.addStretch(2)
+        self.layout.addWidget(self.buttons)
+
+        self.setLayout(self.layout)
+
+    def importOptions(self):
+        pass
+
+    def exportOptions(self):
+        pass
 
 class StackTracker(QtGui.QMainWindow):
     
@@ -121,6 +221,8 @@ class StackTracker(QtGui.QMainWindow):
         QtGui.QMainWindow.__init__(self)
         self.setWindowTitle("StackTracker")
         self.closeEvent = self.cleanUp
+
+        self.options_dialog = OptionsDialog(self)
 
         self.setGeometry(QtCore.QRect(0, 0, 325, 400))
         self.setFixedSize(QtCore.QSize(325,400))
@@ -145,6 +247,9 @@ class StackTracker(QtGui.QMainWindow):
         self.track_button.setFont(font)
         self.track_button.setStyleSheet("QPushButton{background: #e2e2e2; border: 1px solid #888888; color: black;} QPushButton:hover{background: #d6d6d6;}")
         
+        self.options_button = QtGui.QPushButton(self)
+        self.options_button.setGeometry(QtCore.QRect(300, 360, 25, 25))
+        self.options_button.clicked.connect(self.showOptions)
 
         self.tracking_list = []
  
@@ -161,6 +266,9 @@ class StackTracker(QtGui.QMainWindow):
         self.connect(self.worker, QtCore.SIGNAL('newAnswer'), self.newAnswer)
         self.connect(self.worker, QtCore.SIGNAL('newComment'), self.newComment)
         self.worker.start()
+
+    def showOptions(self):
+        self.options_dialog.show()
 
     def cleanUp(self, event):
         self.serializeQuestions()
