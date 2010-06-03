@@ -260,9 +260,17 @@ class StackTracker(QtGui.QMainWindow):
         
         self.tray_menu = QtGui.QMenu()
         self.show_action = QtGui.QAction('Show', None)
+        self.show_action.triggered.connect(self.showWindow)
+        
         self.options_action = QtGui.QAction('Options', None)
+        self.options_action.triggered.connect(self.showOptions)
+        
         self.about_action = QtGui.QAction('About', None)
+        self.about_action.triggered.connect(self.showAbout)        
+        
         self.exit_action = QtGui.QAction('Exit', None)
+        self.exit_action.triggered.connect(self.exitFromTray)
+
         self.tray_menu.addAction(self.show_action)
         self.tray_menu.addAction(self.options_action)
         self.tray_menu.addAction(self.about_action)
@@ -277,8 +285,17 @@ class StackTracker(QtGui.QMainWindow):
         self.connect(self.worker, QtCore.SIGNAL('newComment'), self.newComment)
         self.worker.start()
 
+    def showWindow(self):
+        self.show()
+
     def showOptions(self):
         self.options_dialog.show()
+
+    def showAbout(self):
+        pass
+
+    def exitFromTray(self):
+        self.close()
 
     def cleanUp(self, event):
         self.serializeQuestions()
@@ -430,7 +447,7 @@ if __name__ == "__main__":
 
     app = QtGui.QApplication(sys.argv)
     st = StackTracker(app)
-    st.show()
+    #st.show()
     app.exec_()
     del st
     sys.exit()
