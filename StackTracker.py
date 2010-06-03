@@ -205,7 +205,7 @@ class OptionsDialog(QtGui.QDialog):
     def exportOptions(self):
         pass
 
-class StackTracker(QtGui.QMainWindow):
+class StackTracker(QtGui.QDialog):
     
     SITES = {'stackoverflow.com':'#ff9900',
             'serverfault.com':'#ea292c',
@@ -217,10 +217,10 @@ class StackTracker(QtGui.QMainWindow):
     API_VER = '0.8'
 
     def __init__(self, parent = None):
-        QtGui.QMainWindow.__init__(self)
+        QtGui.QDialog.__init__(self)
+        self.parent = parent
         self.setWindowTitle("StackTracker")
         self.closeEvent = self.cleanUp
-
         self.options_dialog = OptionsDialog(self)
 
         self.setGeometry(QtCore.QRect(0, 0, 325, 400))
@@ -301,7 +301,7 @@ class StackTracker(QtGui.QMainWindow):
         pass
 
     def exitFromTray(self):
-        self.close()
+        self.parent.exit()
 
     def cleanUp(self, event):
         self.serializeQuestions()
@@ -452,6 +452,7 @@ if __name__ == "__main__":
     import sys
 
     app = QtGui.QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)
     st = StackTracker(app)
     #st.show()
     app.exec_()
