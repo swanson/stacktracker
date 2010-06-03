@@ -25,7 +25,8 @@ class LineEditWithPlaceholder(QtGui.QLineEdit):
         if self.placeholder and not self.hasFocus() and not self.text():
             painter = QtGui.QPainter(self)
             painter.setPen(QtGui.QPen(QtCore.Qt.darkGray))
-            painter.drawText(QtCore.QRect(8, 1, self.width(), self.height()), QtCore.Qt.AlignVCenter, self.placeholder)
+            painter.drawText(QtCore.QRect(8, 1, self.width(), self.height()), \
+                                QtCore.Qt.AlignVCenter, self.placeholder)
             painter.end()
 
 
@@ -51,7 +52,11 @@ class QuestionItem(QtGui.QWidget):
         self.stop_button.setText("X")
         self.stop_button.clicked.connect(self.remove)
 
-        background = StackTracker.SITES[site]
+        try:
+            background = StackTracker.SITES[site]
+        except KeyError:
+            background = 'white'
+
         self.label.setStyleSheet("background: %s; border: 1px solid black; border-radius: 10px; margin: 2px; color: white;" % (background))
         self.stop_button.setStyleSheet("QPushButton{background: #cccccc; border: 1px solid black; border-radius: 5px; color: white;} QPushButton:hover{background: #c03434;}")
 
