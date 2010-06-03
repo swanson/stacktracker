@@ -256,6 +256,7 @@ class StackTracker(QtGui.QMainWindow):
         path = os.getcwd() 
         self.notifier = QtGui.QSystemTrayIcon(QtGui.QIcon(path+'/st.png'), self)
         self.notifier.messageClicked.connect(self.popupClicked)
+        self.notifier.activated.connect(self.trayClicked)
         self.notifier.setToolTip('StackTracker')
         
         self.tray_menu = QtGui.QMenu()
@@ -285,8 +286,13 @@ class StackTracker(QtGui.QMainWindow):
         self.connect(self.worker, QtCore.SIGNAL('newComment'), self.newComment)
         self.worker.start()
 
+    def trayClicked(self, event):
+        if event == QtGui.QSystemTrayIcon.DoubleClick:
+            self.showWindow()
+
     def showWindow(self):
         self.show()
+        self.showMaximized()
 
     def showOptions(self):
         self.options_dialog.show()
