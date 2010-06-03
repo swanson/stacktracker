@@ -301,9 +301,10 @@ class StackTracker(QtGui.QDialog):
         pass
 
     def exitFromTray(self):
+        self.cleanUp()
         self.parent.exit()
 
-    def cleanUp(self, event):
+    def cleanUp(self):
         self.serializeQuestions()
 
     def serializeQuestions(self):
