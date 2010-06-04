@@ -142,6 +142,12 @@ class QSpinBoxRadioButton(QtGui.QRadioButton):
     def setSingleStep(self, step):
         self.spinbox.setSingleStep(step)
 
+    def value(self):
+        return self.spinbox.value()
+
+    def setValue(self, value):
+        self.spinbox.setValue(value)
+
 class OptionsDialog(QtGui.QDialog):
     def __init__(self, parent = None):
         QtGui.QDialog.__init__(self, parent)
@@ -199,11 +205,27 @@ class OptionsDialog(QtGui.QDialog):
 
         self.setLayout(self.layout)
 
-    def importOptions(self):
-        pass
+    def updateSettings(self, settings):
+        #todo throw this in a try block
+        self.auto_remove.setChecked(settings['auto_remove'])
+        self.accepted_option.setChecked(settings['on_accepted'])
+        if settings['on_time']:
+            self.time_option.setValue(settings['on_time'])
+            self.time_option.setChecked(True)
+        if settings['on_inactivity']:
+            self.inactivity_option.setValue(settings['on_inactivity'])
+            self.inactivity_option.setChecked(True)
+        self.update_input.setValue(settings['on_time'])
 
-    def exportOptions(self):
-        pass
+    def getSettings(self):
+        settings = {}
+        settings['auto_remove'] = self.auto_remove.isChecked()
+        settings['on_accepted'] = self.accepted_option.isChecked()
+        settings['on_time'] = self.time_option.value() if self.time_option.isChecked() else False
+        settings['on_inactivity'] = self.inactivity_option.value() if self.inactivity_option.isChecked() else False
+        settings['update_interval'] = self.update_input.value()
+
+        return settings
 
 class StackTracker(QtGui.QDialog):
     
@@ -221,7 +243,11 @@ class StackTracker(QtGui.QDialog):
         self.parent = parent
         self.setWindowTitle("StackTracker")
         self.closeEvent = self.cleanUp
+        
         self.options_dialog = OptionsDialog(self)
+        self.options_dialog.accepted.connect(self.serializeOptions)
+        self.options_dialog.rejected.connect(self.deserializeOptions)
+        self.deserializeOptions()        
 
         self.setGeometry(QtCore.QRect(0, 0, 325, 400))
         self.setFixedSize(QtCore.QSize(325,400))
@@ -298,14 +324,21 @@ class StackTracker(QtGui.QDialog):
         self.options_dialog.show()
 
     def showAbout(self):
-        pass
+        s = """
+            <h3>StackTracker</h3>
+            <p>A desktop notifier using the StackExchange API built with PyQt4</p>
+            <p>Get alerts when answers or comments are posted to questions you are tracking.</p>
+            <p><b>Created by Matt Swanson</b></p>
+                        """
+        QtGui.QMessageBox(1, "About",  s).exec_()
 
     def exitFromTray(self):
-        self.cleanUp()
+        self.cleanUp(None)
         self.parent.exit()
 
-    def cleanUp(self):
+    def cleanUp(self, event):
         self.serializeQuestions()
+        self.serializeOptions()
 
     def serializeQuestions(self):
         datetime_to_json = lambda obj: calendar.timegm(obj.utctimetuple()) if isinstance(obj, datetime) else None
@@ -328,7 +361,21 @@ class StackTracker(QtGui.QDialog):
         for q in question_data['questions']:
             rebuilt_question = Question(q['id'], q['site'], q['title'], q['last_queried'])
             self.tracking_list.append(rebuilt_question)
-    
+
+    def serializeOptions(self):
+        settings = self.options_dialog.getSettings()
+        with open('settings.json', 'w') as fp:
+            json.dump(settings, fp, indent = 4)
+
+    def deserializeOptions(self):
+        try:
+            with open('settings.json', 'r') as fp:
+                data = fp.read()
+        except EnvironmentError:
+            return
+
+        self.options_dialog.updateSettings(json.loads(data))
+
     def newAnswer(self, question):
         self.popupUrl = question.url
         self.notify("New answer(s): %s" % question.title)
