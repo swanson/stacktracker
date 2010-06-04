@@ -11,7 +11,7 @@ import re
 import time
 import calendar
 
-class LineEditWithPlaceholder(QtGui.QLineEdit):
+class QLineEditWithPlaceholder(QtGui.QLineEdit):
     def __init__(self, parent = None):
         QtGui.QLineEdit.__init__(self, parent)
         self.placeholder = None
@@ -257,7 +257,7 @@ class StackTracker(QtGui.QDialog):
         self.display_list.setStyleSheet("QListWidget{show-decoration-selected: 0; background: #818185;}")
         self.display_list.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
 
-        self.question_input = LineEditWithPlaceholder(self)
+        self.question_input = QLineEditWithPlaceholder(self)
         self.question_input.setGeometry(QtCore.QRect(15, 360, 220, 30))
         self.question_input.setPlaceholderText("Enter Question URL...")
 
