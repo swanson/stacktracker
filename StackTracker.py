@@ -246,6 +246,7 @@ class StackTracker(QtGui.QDialog):
         
         self.options_dialog = OptionsDialog(self)
         self.options_dialog.accepted.connect(self.serializeOptions)
+        self.options_dialog.accepted.connect(self.applySettings)
         self.options_dialog.rejected.connect(self.deserializeOptions)
         self.deserializeOptions()        
 
@@ -310,7 +311,15 @@ class StackTracker(QtGui.QDialog):
         self.worker = WorkerThread(self.tracking_list)
         self.connect(self.worker, QtCore.SIGNAL('newAnswer'), self.newAnswer)
         self.connect(self.worker, QtCore.SIGNAL('newComment'), self.newComment)
+
+        self.applySettings()
+
         self.worker.start()
+
+    def applySettings(self):
+        settings = self.options_dialog.getSettings()
+        interval = settings['update_interval'] * 1000 #convert to milliseconds
+        self.worker.setInterval(interval)
 
     def trayClicked(self, event):
         if event == QtGui.QSystemTrayIcon.DoubleClick:
@@ -440,23 +449,28 @@ class StackTracker(QtGui.QDialog):
             return
     
     def notify(self, msg):
-        self.notifier.showMessage("StackTracker", msg, 20000)
+        #fix time interval
+        self.notifier.showMessage("StackTracker", msg, 30000)
 
 class WorkerThread(QtCore.QThread):
     def __init__(self, tracking_list, parent = None):
         QtCore.QThread.__init__(self, parent)
         self.tracking_list = tracking_list
+        self.timer = QtCore.QTimer()
+        self.timer.setInterval(30000)
 
     def run(self):
         self.fetch()
-        self.timer = QtCore.QTimer()
         self.connect(self.timer, QtCore.SIGNAL('timeout()'), self.fetch, QtCore.Qt.DirectConnection)
-        self.timer.start(20000)
+        self.timer.start(self.timer.interval())
         self.exec_()
 
     def __del__(self):
         self.exit()
         self.terminate()
+
+    def setInterval(self, value):
+        self.timer.setInterval(value)
 
     def updateTrackingList(self, tracking_list):
         self.tracking_list = tracking_list
