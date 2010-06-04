@@ -1,5 +1,5 @@
 from PyQt4 import QtCore, QtGui, QtWebKit
-from datetime import datetime, date
+from datetime import timedelta, datetime, date
 try:
     import json
 except ImportError:
@@ -31,7 +31,7 @@ class QLineEditWithPlaceholder(QtGui.QLineEdit):
 
 
 class QuestionItem(QtGui.QWidget):
-    def __init__(self, title, id, site):
+    def __init__(self, question):
         QtGui.QListWidgetItem.__init__(self)
 
         self.setGeometry(QtCore.QRect(0,0,325,50))
@@ -53,25 +53,26 @@ class QuestionItem(QtGui.QWidget):
         self.stop_button.clicked.connect(self.remove)
 
         try:
-            background = StackTracker.SITES[site]
+            background = StackTracker.SITES[question.site]
         except KeyError:
             background = 'white'
 
         self.label.setStyleSheet("background: %s; border: 1px solid black; border-radius: 10px; margin: 2px; color: white;" % (background))
         self.stop_button.setStyleSheet("QPushButton{background: #cccccc; border: 1px solid black; border-radius: 5px; color: white;} QPushButton:hover{background: #c03434;}")
 
-        self.label.setText(title)
-        self.id = id
+        self.label.setText(question.title)
+        self.id = question.id
+        self.question = question
 
     def remove(self):
-        self.emit(QtCore.SIGNAL('removeQuestion'), self.id)
+        self.emit(QtCore.SIGNAL('removeQuestion'), self.question)
 
     def __repr__(self):
         return "%s: %s" % (self.id, self.title)
 
 
 class Question():
-    def __init__(self, question_id, site, title = None, last_queried = None):
+    def __init__(self, question_id, site, title = None, created = None, last_queried = None, already_answered = None):
         self.id = question_id
         self.site = site
         
@@ -85,14 +86,21 @@ class Question():
         self.comments_url = '%s/questions/%s/comments%s' \
                         % (api_base, self.id, StackTracker.API_KEY)
         
-        json_url = '%s/questions/%s/%s' \
+        self.json_url = '%s/questions/%s/%s' \
                         % (api_base, self.id, StackTracker.API_KEY)
 
         if title is None:
-            so_data = json.loads(urllib2.urlopen(json_url).read())
+            so_data = json.loads(urllib2.urlopen(self.json_url).read())
             self.title = so_data['questions'][0]['title']
         else:
             self.title = title
+
+        if already_answered is None:
+            so_data = json.loads(urllib2.urlopen(self.json_url).read())
+            self.already_answered = 'accepted_answer_id' in so_data['questions'][0]
+        else:
+            self.already_answered = already_answered
+
 
         if len(self.title) > 50:
             self.title = self.title[:48] + '...'
@@ -101,9 +109,17 @@ class Question():
             self.last_queried = datetime.utcnow()
         else:
             self.last_queried = datetime.utcfromtimestamp(last_queried)
+
+        if created is None:
+            self.created = datetime.utcnow()
+        else:
+            self.created = datetime.utcfromtimestamp(created)
         
     def __repr__(self):
         return "%s: %s" % (self.id, self.title)
+
+    def __eq__(self, other):
+        return ((self.site == other.site) and (self.id == other.id))
 
 class QSpinBoxRadioButton(QtGui.QRadioButton):
     def __init__(self, prefix = '', suffix = '', parent = None):
@@ -311,6 +327,7 @@ class StackTracker(QtGui.QDialog):
         self.worker = WorkerThread(self.tracking_list)
         self.connect(self.worker, QtCore.SIGNAL('newAnswer'), self.newAnswer)
         self.connect(self.worker, QtCore.SIGNAL('newComment'), self.newComment)
+        self.connect(self.worker, QtCore.SIGNAL('autoRemove'), self.removeQuestion)
 
         self.applySettings()
 
@@ -320,6 +337,7 @@ class StackTracker(QtGui.QDialog):
         settings = self.options_dialog.getSettings()
         interval = settings['update_interval'] * 1000 #convert to milliseconds
         self.worker.setInterval(interval)
+        self.worker.applySettings(settings)
 
     def trayClicked(self, event):
         if event == QtGui.QSystemTrayIcon.DoubleClick:
@@ -368,7 +386,8 @@ class StackTracker(QtGui.QDialog):
 
         question_data = json.loads(data)
         for q in question_data['questions']:
-            rebuilt_question = Question(q['id'], q['site'], q['title'], q['last_queried'])
+            rebuilt_question = Question(q['id'], q['site'], q['title'], q['created'], \
+                                                q['last_queried'], q['already_answered'])
             self.tracking_list.append(rebuilt_question)
 
     def serializeOptions(self):
@@ -403,14 +422,21 @@ class StackTracker(QtGui.QDialog):
             item = QtGui.QListWidgetItem(self.display_list)
             item.setSizeHint(QtCore.QSize(100, 50))
             self.display_list.addItem(item)
-            qitem = QuestionItem(question.title, question.id, question.site)
+            qitem = QuestionItem(question)
             self.connect(qitem, QtCore.SIGNAL('removeQuestion'), self.removeQuestion)
             self.display_list.setItemWidget(item, qitem)
             n = n + 1
 
-    def removeQuestion(self, id):
+    def autoRemoveQuestion(self, q):
+        for question in self.tracking_list[:]:
+            if question == q:
+                self.tracking_list.remove(question)
+        self.displayQuestions()
+        self.worker.updateTrackingList(self.tracking_list)
+
+    def removeQuestion(self, q):
         for question in self.tracking_list:
-            if question.id == id:
+            if question == q:
                 self.tracking_list.remove(question)
         self.displayQuestions()
         self.worker.updateTrackingList(self.tracking_list)
@@ -439,7 +465,9 @@ class StackTracker(QtGui.QDialog):
         else:
             #bad input
             return
-        if id not in self.tracking_list:
+        #not right, fix this
+        #if id not in self.tracking_list:
+        if True:
             q = Question(id, site)
             self.tracking_list.append(q)
             self.displayQuestions()
@@ -449,8 +477,7 @@ class StackTracker(QtGui.QDialog):
             return
     
     def notify(self, msg):
-        #fix time interval
-        self.notifier.showMessage("StackTracker", msg, 30000)
+        self.notifier.showMessage("StackTracker", msg, self.worker.timer.interval())
 
 class WorkerThread(QtCore.QThread):
     def __init__(self, tracking_list, parent = None):
@@ -458,6 +485,7 @@ class WorkerThread(QtCore.QThread):
         self.tracking_list = tracking_list
         self.timer = QtCore.QTimer()
         self.timer.setInterval(30000)
+        self.settings = {}
 
     def run(self):
         self.fetch()
@@ -471,6 +499,9 @@ class WorkerThread(QtCore.QThread):
 
     def setInterval(self, value):
         self.timer.setInterval(value)
+
+    def applySettings(self, settings):
+        self.settings = settings
 
     def updateTrackingList(self, tracking_list):
         self.tracking_list = tracking_list
@@ -509,6 +540,28 @@ class WorkerThread(QtCore.QThread):
 
             question.last_queried = most_recent
 
+        self.autoRemoveQuestions()
+
+    def autoRemoveQuestions(self):
+        tracking_list = copy.deepcopy(self.tracking_list)
+        if self.settings['auto_remove']: #if autoremove is enabled
+            if self.settings['on_accepted']: #remove when accepted
+                for question in tracking_list:
+                    so_data = json.loads(urllib2.urlopen(question.json_url).read())
+                    if 'accepted_answer_id' in so_data['questions'][0]:
+                        if not question.already_answered:
+                            self.emit(QtCore.SIGNAL('autoRemove'), question)
+            elif self.settings['on_inactivity']: #remove if time - last_queried > threshold
+                threshold = timedelta(hours = self.settings['on_inactivity'])
+                for question in tracking_list:
+                    if datetime.utcnow() - question.last_queried > threshold:
+                        self.emit(QtCore.SIGNAL('autoRemove'), question)
+            elif self.settings['on_time']: #remove if time - created > threshold
+                threshold = timedelta(hours = self.settings['on_time'])
+                for question in tracking_list:
+                    if datetime.utcnow() - question.created > threshold:
+                        self.emit(QtCore.SIGNAL('autoRemove'), question)
+
 if __name__ == "__main__":
     
     import sys
@@ -516,7 +569,6 @@ if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     st = StackTracker(app)
-    #st.show()
     app.exec_()
     del st
     sys.exit()
