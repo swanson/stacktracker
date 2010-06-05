@@ -30,8 +30,17 @@ class QLineEditWithPlaceholder(QtGui.QLineEdit):
             painter.end()
 
 class QuestionDisplayWidget(QtGui.QWidget):
+    
+
     def __init__(self, question, parent = None):
         QtGui.QWidget.__init__(self, parent)
+        
+        SITE_LOGOS = {'stackoverflow.com':'img/stackoverflow_logo.svg',
+                      'serverfault.com':'img/serverfault_logo.svg',
+                      'superuser.com':'img/superuser_logo.svg',
+                      'meta.stackoverflow.com':'img/metastackoverflow_logo.svg',
+                      }
+
         self.setGeometry(QtCore.QRect(0,0,320,80))
         self.setStyleSheet('QLabel {color: #cccccc;}')
         self.frame = QtGui.QFrame(self)
@@ -58,9 +67,10 @@ class QuestionDisplayWidget(QtGui.QWidget):
         self.remove_button.setStyleSheet("QPushButton{background: #818185; border: 3px solid black; color: white;} QPushButton:hover{background: #c03434;}")
         self.remove_button.clicked.connect(self.remove)
 
-        self.site_icon = QtGui.QLabel(self.frame)
-        self.site_icon.setGeometry(QtCore.QRect(10, 60, 25, 25))
-        self.site_icon.setStyleSheet("image: url(" + path + "/so_logo.png); background-repeat:no-repeat;")
+        if question.site in SITE_LOGOS:
+            self.site_icon = QtGui.QLabel(self.frame)
+            self.site_icon.setGeometry(QtCore.QRect(10, 60, 25, 25))
+            self.site_icon.setStyleSheet("image: url(" + path + "/" + SITE_LOGOS[question.site] + "); background-repeat:no-repeat;")
 
         self.answers_label = QtGui.QLabel(self.frame)
         self.answers_label.setText('%s answer(s)' % question.answer_count)
