@@ -408,6 +408,7 @@ class StackTracker(QtGui.QDialog):
     def showWindow(self):
         self.show()
         self.showMaximized()
+        self.displayQuestions()
 
     def showOptions(self):
         self.options_dialog.show()
@@ -582,6 +583,7 @@ class WorkerThread(QtCore.QThread):
             most_recent = question.last_queried
             
             so_data = json.loads(urllib2.urlopen(question.answers_url).read())
+            question.answer_count = so_data['total']
             for answer in so_data['answers']:
                 updated = datetime.utcfromtimestamp(answer['creation_date'])
                 if updated > question.last_queried:
