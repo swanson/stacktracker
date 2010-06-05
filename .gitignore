@@ -1,3 +1,4 @@
 *.sw*
 *.pyc
 tracking.json
+settings.json

@@ -29,6 +29,53 @@ class QLineEditWithPlaceholder(QtGui.QLineEdit):
                                 QtCore.Qt.AlignVCenter, self.placeholder)
             painter.end()
 
+class QuestionDisplayWidget(QtGui.QWidget):
+    def __init__(self, question, parent = None):
+        QtGui.QWidget.__init__(self, parent)
+        self.setGeometry(QtCore.QRect(0,0,320,80))
+        self.setStyleSheet('QLabel {color: #cccccc;}')
+        self.frame = QtGui.QFrame(self)
+        self.frame.setObjectName('mainFrame')
+        self.frame.setStyleSheet('#mainFrame {background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #333333, stop: 1 #4d4d4d);}')
+        
+        path = os.getcwd()
+        self.question = question
+
+        font = QtGui.QFont()
+        font.setPointSize(14)
+
+        self.question_label = QtGui.QLabel(self.frame)
+        self.question_label.setGeometry(QtCore.QRect(10, 7, 280, 50))
+        self.question_label.setWordWrap(True)
+        self.question_label.setFont(font)
+        self.question_label.setText(question.title)
+        self.question_label.setObjectName('question_label')
+        self.question_label.setStyleSheet("#question_label{color: #83ceea;text-decoration:underline} #question_label:hover{text-decoration:none;}")
+
+        self.remove_button = QtGui.QPushButton(self.frame)
+        self.remove_button.setGeometry(QtCore.QRect(295, 7, 25, 25))
+        self.remove_button.setText('X')
+        self.remove_button.setStyleSheet("QPushButton{background: #818185; border: 3px solid black; color: white;} QPushButton:hover{background: #c03434;}")
+        self.remove_button.clicked.connect(self.remove)
+
+        self.site_icon = QtGui.QLabel(self.frame)
+        self.site_icon.setGeometry(QtCore.QRect(10, 60, 25, 25))
+        self.site_icon.setStyleSheet("image: url(" + path + "/so_logo.png); background-repeat:no-repeat;")
+
+        self.answers_label = QtGui.QLabel(self.frame)
+        self.answers_label.setText('%s answer(s)' % question.answer_count)
+        self.answers_label.setGeometry(QtCore.QRect(40, 65, 100, 20))
+        
+        if question.submitter is not None:
+            self.submitted_label = QtGui.QLabel(self.frame)
+            self.submitted_label.setText('asked by ' + question.submitter)
+            self.submitted_label.setAlignment(QtCore.Qt.AlignRight)
+            self.submitted_label.setGeometry(QtCore.QRect(120, 65, 200, 20))
+
+    def remove(self):
+        self.emit(QtCore.SIGNAL('removeQuestion'), self.question)
+
+
 
 class QuestionItem(QtGui.QWidget):
     def __init__(self, question):
@@ -72,7 +119,7 @@ class QuestionItem(QtGui.QWidget):
 
 
 class Question():
-    def __init__(self, question_id, site, title = None, created = None, last_queried = None, already_answered = None):
+    def __init__(self, question_id, site, title = None, created = None, last_queried = None, already_answered = None, answer_count = None, submitter = None):
         self.id = question_id
         self.site = site
         
@@ -89,18 +136,31 @@ class Question():
         self.json_url = '%s/questions/%s/%s' \
                         % (api_base, self.id, StackTracker.API_KEY)
 
-        if title is None:
+        if title is None or answer_count is None or submitter is None or already_answered is None:
             so_data = json.loads(urllib2.urlopen(self.json_url).read())
+
+        if title is None:
             self.title = so_data['questions'][0]['title']
         else:
             self.title = title
 
         if already_answered is None:
-            so_data = json.loads(urllib2.urlopen(self.json_url).read())
             self.already_answered = 'accepted_answer_id' in so_data['questions'][0]
         else:
             self.already_answered = already_answered
+        
+        if answer_count is None:
+            self.answer_count = so_data['questions'][0]['answer_count']
+        else:
+            self.answer_count = answer_count
 
+        if submitter is None:
+            try:
+                self.submitter = so_data['questions'][0]['owner']['display_name']
+            except KeyError:
+                self.submitter = None
+        else:
+            self.submitter = submitter
 
         if len(self.title) > 50:
             self.title = self.title[:48] + '...'
@@ -267,11 +327,13 @@ class StackTracker(QtGui.QDialog):
         self.deserializeOptions()        
 
         self.setGeometry(QtCore.QRect(0, 0, 325, 400))
-        self.setFixedSize(QtCore.QSize(325,400))
+        self.setFixedSize(QtCore.QSize(350,400))
         self.display_list = QtGui.QListWidget(self)
-        self.display_list.resize(QtCore.QSize(325, 350))
-        self.display_list.setStyleSheet("QListWidget{show-decoration-selected: 0; background: #818185;}")
+        self.display_list.resize(QtCore.QSize(350, 350))
+        self.display_list.setStyleSheet("QListWidget{show-decoration-selected: 0; background: black;}")
         self.display_list.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
+        self.display_list.setVerticalScrollMode(QtGui.QAbstractItemView.ScrollPerPixel)
+        self.display_list.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
 
         self.question_input = QLineEditWithPlaceholder(self)
         self.question_input.setGeometry(QtCore.QRect(15, 360, 220, 30))
@@ -387,7 +449,8 @@ class StackTracker(QtGui.QDialog):
         question_data = json.loads(data)
         for q in question_data['questions']:
             rebuilt_question = Question(q['id'], q['site'], q['title'], q['created'], \
-                                                q['last_queried'], q['already_answered'])
+                                                q['last_queried'], q['already_answered'], 
+                                                q['answer_count'], q['submitter'])
             self.tracking_list.append(rebuilt_question)
 
     def serializeOptions(self):
@@ -420,9 +483,9 @@ class StackTracker(QtGui.QDialog):
         n = 0
         for question in self.tracking_list:
             item = QtGui.QListWidgetItem(self.display_list)
-            item.setSizeHint(QtCore.QSize(100, 50))
+            item.setSizeHint(QtCore.QSize(320, 95))
             self.display_list.addItem(item)
-            qitem = QuestionItem(question)
+            qitem = QuestionDisplayWidget(question)
             self.connect(qitem, QtCore.SIGNAL('removeQuestion'), self.removeQuestion)
             self.display_list.setItemWidget(item, qitem)
             n = n + 1
@@ -472,6 +535,7 @@ class StackTracker(QtGui.QDialog):
             self.tracking_list.append(q)
             self.displayQuestions()
             self.worker.updateTrackingList(self.tracking_list)
+            self.question_input.clear()
         else:
             #question already being tracked
             return
