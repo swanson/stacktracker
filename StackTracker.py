@@ -10,6 +10,7 @@ import copy
 import re
 import time
 import calendar
+import sip
 
 class QLineEditWithPlaceholder(QtGui.QLineEdit):
     def __init__(self, parent = None):
@@ -30,8 +31,6 @@ class QLineEditWithPlaceholder(QtGui.QLineEdit):
             painter.end()
 
 class QuestionDisplayWidget(QtGui.QWidget):
-    
-
     def __init__(self, question, parent = None):
         QtGui.QWidget.__init__(self, parent)
         
@@ -184,6 +183,7 @@ class Question():
             self.created = datetime.utcnow()
         else:
             self.created = datetime.utcfromtimestamp(created)
+
         
     def __repr__(self):
         return "%s: %s" % (self.id, self.title)
@@ -338,12 +338,14 @@ class StackTracker(QtGui.QDialog):
 
         self.setGeometry(QtCore.QRect(0, 0, 325, 400))
         self.setFixedSize(QtCore.QSize(350,400))
+
         self.display_list = QtGui.QListWidget(self)
         self.display_list.resize(QtCore.QSize(350, 350))
         self.display_list.setStyleSheet("QListWidget{show-decoration-selected: 0; background: black;}")
         self.display_list.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
         self.display_list.setVerticalScrollMode(QtGui.QAbstractItemView.ScrollPerPixel)
         self.display_list.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.display_list.clear()
 
         self.question_input = QLineEditWithPlaceholder(self)
         self.question_input.setGeometry(QtCore.QRect(15, 360, 220, 30))
@@ -418,7 +420,7 @@ class StackTracker(QtGui.QDialog):
     def showWindow(self):
         self.show()
         self.showMaximized()
-        self.displayQuestions()
+        #self.displayQuestions()
 
     def showOptions(self):
         self.options_dialog.show()
@@ -490,7 +492,14 @@ class StackTracker(QtGui.QDialog):
         QtGui.QDesktopServices.openUrl(QtCore.QUrl(self.popupUrl))
 
     def displayQuestions(self):
+        self.display_list = QtGui.QListWidget(self)
+        self.display_list.resize(QtCore.QSize(350, 350))
+        self.display_list.setStyleSheet("QListWidget{show-decoration-selected: 0; background: black;}")
+        self.display_list.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
+        self.display_list.setVerticalScrollMode(QtGui.QAbstractItemView.ScrollPerPixel)
+        self.display_list.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
         self.display_list.clear()
+
         n = 0
         for question in self.tracking_list:
             item = QtGui.QListWidgetItem(self.display_list)
@@ -499,7 +508,10 @@ class StackTracker(QtGui.QDialog):
             qitem = QuestionDisplayWidget(question)
             self.connect(qitem, QtCore.SIGNAL('removeQuestion'), self.removeQuestion)
             self.display_list.setItemWidget(item, qitem)
+            del item
             n = n + 1
+ 
+        self.display_list.show()
 
     def autoRemoveQuestion(self, q):
         for question in self.tracking_list[:]:
@@ -512,6 +524,7 @@ class StackTracker(QtGui.QDialog):
         for question in self.tracking_list:
             if question == q:
                 self.tracking_list.remove(question)
+                break
         self.displayQuestions()
         self.worker.updateTrackingList(self.tracking_list)
 
