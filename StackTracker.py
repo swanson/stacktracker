@@ -269,7 +269,7 @@ class OptionsDialog(QtGui.QDialog):
 
         self.update_interval = QtGui.QGroupBox("Update Interval", self)
         self.update_input = QtGui.QSpinBox()
-        self.update_input.setMinimum(30)
+        self.update_input.setMinimum(60)
         self.update_input.setMaximum(86400)
         self.update_input.setSingleStep(15)
         self.update_input.setSuffix(" seconds")
