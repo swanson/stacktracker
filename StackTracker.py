@@ -371,7 +371,7 @@ class StackTracker(QtGui.QDialog):
 
 
         path = os.getcwd() 
-        self.notifier = QtGui.QSystemTrayIcon(QtGui.QIcon(path+'/st.png'), self)
+        self.notifier = QtGui.QSystemTrayIcon(QtGui.QIcon(path+'/img/st_logo.png'), self)
         self.notifier.messageClicked.connect(self.popupClicked)
         self.notifier.activated.connect(self.trayClicked)
         self.notifier.setToolTip('StackTracker')
