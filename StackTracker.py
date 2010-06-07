@@ -382,6 +382,7 @@ class StackTracker(QtGui.QDialog):
     def showWindow(self):
         self.show()
         self.showMaximized()
+        self.displayQuestions()
 
     def showSettings(self):
         self.settings_dialog.show()
