@@ -88,52 +88,10 @@ class QuestionDisplayWidget(QtGui.QWidget):
     def launchUrl(self, event):
         QtGui.QDesktopServices.openUrl(QtCore.QUrl(self.question.url))
 
-
-
-
-class QuestionItem(QtGui.QWidget):
-    def __init__(self, question):
-        QtGui.QListWidgetItem.__init__(self)
-
-        self.setGeometry(QtCore.QRect(0,0,325,50))
-        
-        font = QtGui.QFont()
-        font.setPointSize(12)
-        font.setBold(True)
-        font.setFamily("Arial")
-
-        self.label = QtGui.QLabel(self)
-        self.label.setWordWrap(True)
-        self.label.setGeometry(QtCore.QRect(15,0,253,50))
-        self.label.setFont(font)
-
-        self.stop_button = QtGui.QPushButton(self)
-        self.stop_button.setGeometry(QtCore.QRect(265,12,25,25))
-        self.stop_button.setFont(font)
-        self.stop_button.setText("X")
-        self.stop_button.clicked.connect(self.remove)
-
-        try:
-            background = StackTracker.SITES[question.site]
-        except KeyError:
-            background = 'white'
-
-        self.label.setStyleSheet("background: %s; border: 1px solid black; border-radius: 10px; margin: 2px; color: white;" % (background))
-        self.stop_button.setStyleSheet("QPushButton{background: #cccccc; border: 1px solid black; border-radius: 5px; color: white;} QPushButton:hover{background: #c03434;}")
-
-        self.label.setText(question.title)
-        self.id = question.id
-        self.question = question
-
-    def remove(self):
-        self.emit(QtCore.SIGNAL('removeQuestion'), self.question)
-
-    def __repr__(self):
-        return "%s: %s" % (self.id, self.title)
-
-
 class Question():
-    def __init__(self, question_id, site, title = None, created = None, last_queried = None, already_answered = None, answer_count = None, submitter = None):
+    def __init__(self, question_id, site, title = None, created = None, \
+                        last_queried = None, already_answered = None, \
+                        answer_count = None, submitter = None):
         self.id = question_id
         self.site = site
         
@@ -325,12 +283,6 @@ class OptionsDialog(QtGui.QDialog):
 
 class StackTracker(QtGui.QDialog):
     
-    SITES = {'stackoverflow.com':'#ff9900',
-            'serverfault.com':'#ea292c',
-            'superuser.com':'#00bff3',
-            'meta.stackoverflow.com':'#a6a6a6',
-            }
-
     API_KEY = '?key=Jv8tIPTrRUOqRe-5lk4myw'
     API_VER = '0.8'
 
@@ -442,7 +394,10 @@ class StackTracker(QtGui.QDialog):
             <p>Get alerts when answers or comments are posted to questions you are tracking.</p>
             <p><b>Created by Matt Swanson</b></p>
                         """
-        QtGui.QMessageBox(1, "About",  s).exec_()
+        QtGui.QMessageBox(QtGui.QMessageBox.Information, "About",  s).exec_()
+
+    def showError(self, text):
+        QtGui.QMessageBox(QtGui.QMessageBox.Critical, "Error!", text).exec_()
 
     def exitFromTray(self):
         self.cleanUp(None)
@@ -556,22 +511,21 @@ class StackTracker(QtGui.QDialog):
 
     def addQuestion(self):
         url = self.question_input.text()
+        self.question_input.clear()
         details = self.extractDetails(str(url))
         if details:
             id, site = details
         else:
-            #bad input
+            self.showError("Invalid URL format, please try again.")
             return
-        #not right, fix this
-        #if id not in self.tracking_list:
-        if True:
+        q = Question(id, site)
+        if q not in self.tracking_list:
             q = Question(id, site)
             self.tracking_list.append(q)
             self.displayQuestions()
             self.worker.updateTrackingList(self.tracking_list)
-            self.question_input.clear()
         else:
-            #question already being tracked
+            self.showError("This question is already being tracked.")
             return
     
     def notify(self, msg):
