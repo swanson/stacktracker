@@ -1,4 +1,4 @@
-from PyQt4 import QtCore, QtGui, QtWebKit
+from PyQt4 import QtCore, QtGui, QtWebKit, QtNetwork
 from datetime import timedelta, datetime, date
 try:
     import json
