@@ -58,7 +58,8 @@ class QuestionDisplayWidget(QtGui.QWidget):
         self.question_label.setFont(font)
         self.question_label.setText(question.title)
         self.question_label.setObjectName('question_label')
-        self.question_label.setStyleSheet("#question_label{color: #83ceea;text-decoration:underline} #question_label:hover{text-decoration:none;}")
+        self.question_label.setStyleSheet("#question_label{color: #83ceea;text-decoration:underline} #question_label:hover{color: #b9eafc;}")
+        self.question_label.mousePressEvent = self.launchUrl
 
         self.remove_button = QtGui.QPushButton(self.frame)
         self.remove_button.setGeometry(QtCore.QRect(295, 7, 25, 25))
@@ -83,6 +84,10 @@ class QuestionDisplayWidget(QtGui.QWidget):
 
     def remove(self):
         self.emit(QtCore.SIGNAL('removeQuestion'), self.question)
+
+    def launchUrl(self, event):
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl(self.question.url))
+
 
 
 
