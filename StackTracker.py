@@ -535,14 +535,14 @@ class WorkerThread(QtCore.QThread):
     def __init__(self, tracking_list, parent = None):
         QtCore.QThread.__init__(self, parent)
         self.tracking_list = tracking_list
-        self.timer = QtCore.QTimer()
-        self.timer.setInterval(30000)
+        self.interval = 30000
         self.settings = {}
 
     def run(self):
-        self.fetch()
+        self.timer = QtCore.QTimer()
         self.connect(self.timer, QtCore.SIGNAL('timeout()'), self.fetch, QtCore.Qt.DirectConnection)
-        self.timer.start(self.timer.interval())
+        self.timer.start(self.interval)
+        self.fetch()
         self.exec_()
 
     def __del__(self):
@@ -550,7 +550,7 @@ class WorkerThread(QtCore.QThread):
         self.terminate()
 
     def setInterval(self, value):
-        self.timer.setInterval(value)
+        self.interval = value
 
     def applySettings(self, settings):
         self.settings = settings
