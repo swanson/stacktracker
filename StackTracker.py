@@ -195,7 +195,9 @@ class QSpinBoxRadioButton(QtGui.QRadioButton):
     def __init__(self, prefix = '', suffix = '', parent = None):
         QtGui.QRadioButton.__init__(self, parent)
         self.prefix = QtGui.QLabel(prefix)
+        self.prefix.mousePressEvent = self.labelClicked
         self.suffix = QtGui.QLabel(suffix)
+        self.suffix.mousePressEvent = self.labelClicked
 
         self.spinbox = QtGui.QSpinBox()
         self.spinbox.setEnabled(self.isDown())
@@ -209,6 +211,9 @@ class QSpinBoxRadioButton(QtGui.QRadioButton):
         self.layout.setContentsMargins(25, 0, 0, 0)
 
         self.setLayout(self.layout)
+
+    def labelClicked(self, event):
+        self.toggle()
 
     def setPrefix(self, p):
         self.prefix.setText(p)
