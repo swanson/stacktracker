@@ -34,10 +34,10 @@ class QuestionDisplayWidget(QtGui.QWidget):
     def __init__(self, question, parent = None):
         QtGui.QWidget.__init__(self, parent)
         
-        SITE_LOGOS = {'stackoverflow.com':'img/stackoverflow_logo.svg',
-                      'serverfault.com':'img/serverfault_logo.svg',
-                      'superuser.com':'img/superuser_logo.svg',
-                      'meta.stackoverflow.com':'img/metastackoverflow_logo.svg',
+        SITE_LOGOS = {'stackoverflow.com':'stackoverflow_logo.svg',
+                      'serverfault.com':'serverfault_logo.svg',
+                      'superuser.com':'superuser_logo.svg',
+                      'meta.stackoverflow.com':'metastackoverflow_logo.svg',
                       }
 
         self.setGeometry(QtCore.QRect(0,0,320,80))
@@ -46,7 +46,6 @@ class QuestionDisplayWidget(QtGui.QWidget):
         self.frame.setObjectName('mainFrame')
         self.frame.setStyleSheet('#mainFrame {background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #333333, stop: 1 #4d4d4d);}')
         
-        path = os.getcwd()
         self.question = question
 
         font = QtGui.QFont()
@@ -68,9 +67,10 @@ class QuestionDisplayWidget(QtGui.QWidget):
         self.remove_button.clicked.connect(self.remove)
 
         if question.site in SITE_LOGOS:
+            path = os.path.join(os.getcwd(), 'img', SITE_LOGOS[question.site])
             self.site_icon = QtGui.QLabel(self.frame)
             self.site_icon.setGeometry(QtCore.QRect(10, 60, 25, 25))
-            self.site_icon.setStyleSheet("image: url(" + path + "/" + SITE_LOGOS[question.site] + "); background-repeat:no-repeat;")
+            self.site_icon.setStyleSheet("image: url(" + path + "); background-repeat:no-repeat;")
 
         self.answers_label = QtGui.QLabel(self.frame)
         self.answers_label.setText('%s answer(s)' % question.answer_count)
