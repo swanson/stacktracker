@@ -202,11 +202,11 @@ class QSpinBoxRadioButton(QtGui.QRadioButton):
     def setValue(self, value):
         self.spinbox.setValue(value)
 
-class OptionsDialog(QtGui.QDialog):
+class SettingsDialog(QtGui.QDialog):
     def __init__(self, parent = None):
         QtGui.QDialog.__init__(self, parent)
         self.setFixedSize(QtCore.QSize(400,250))
-        self.setWindowTitle('Options')
+        self.setWindowTitle('Settings')
 
         self.layout = QtGui.QVBoxLayout()
 
@@ -292,11 +292,11 @@ class StackTracker(QtGui.QDialog):
         self.setWindowTitle("StackTracker")
         self.closeEvent = self.cleanUp
         
-        self.options_dialog = OptionsDialog(self)
-        self.options_dialog.accepted.connect(self.serializeOptions)
-        self.options_dialog.accepted.connect(self.applySettings)
-        self.options_dialog.rejected.connect(self.deserializeOptions)
-        self.deserializeOptions()        
+        self.settings_dialog = SettingsDialog(self)
+        self.settings_dialog.accepted.connect(self.serializeSettings)
+        self.settings_dialog.accepted.connect(self.applySettings)
+        self.settings_dialog.rejected.connect(self.deserializeSettings)
+        self.deserializeSettings()        
 
         self.setGeometry(QtCore.QRect(0, 0, 325, 400))
         self.setFixedSize(QtCore.QSize(350,400))
@@ -342,8 +342,8 @@ class StackTracker(QtGui.QDialog):
         self.show_action = QtGui.QAction('Show', None)
         self.show_action.triggered.connect(self.showWindow)
         
-        self.options_action = QtGui.QAction('Options', None)
-        self.options_action.triggered.connect(self.showOptions)
+        self.settings_action = QtGui.QAction('Settings', None)
+        self.settings_action.triggered.connect(self.showSettings)
         
         self.about_action = QtGui.QAction('About', None)
         self.about_action.triggered.connect(self.showAbout)        
@@ -352,7 +352,7 @@ class StackTracker(QtGui.QDialog):
         self.exit_action.triggered.connect(self.exitFromTray)
 
         self.tray_menu.addAction(self.show_action)
-        self.tray_menu.addAction(self.options_action)
+        self.tray_menu.addAction(self.settings_action)
         self.tray_menu.addAction(self.about_action)
         self.tray_menu.addSeparator()
         self.tray_menu.addAction(self.exit_action)
@@ -370,7 +370,7 @@ class StackTracker(QtGui.QDialog):
         self.worker.start()
 
     def applySettings(self):
-        settings = self.options_dialog.getSettings()
+        settings = self.settings_dialog.getSettings()
         interval = settings['update_interval'] * 1000 #convert to milliseconds
         self.worker.setInterval(interval)
         self.worker.applySettings(settings)
@@ -382,10 +382,9 @@ class StackTracker(QtGui.QDialog):
     def showWindow(self):
         self.show()
         self.showMaximized()
-        #self.displayQuestions()
 
-    def showOptions(self):
-        self.options_dialog.show()
+    def showSettings(self):
+        self.settings_dialog.show()
 
     def showAbout(self):
         s = """
@@ -405,7 +404,7 @@ class StackTracker(QtGui.QDialog):
 
     def cleanUp(self, event):
         self.serializeQuestions()
-        self.serializeOptions()
+        self.serializeSettings()
 
     def serializeQuestions(self):
         datetime_to_json = lambda obj: calendar.timegm(obj.utctimetuple()) if isinstance(obj, datetime) else None
@@ -421,7 +420,7 @@ class StackTracker(QtGui.QDialog):
             with open('tracking.json', 'r') as fp:
                 data = fp.read()
         except EnvironmentError:
-            #no tracking.json file
+            #no tracking.json file, return silently
             return
 
         question_data = json.loads(data)
@@ -431,19 +430,20 @@ class StackTracker(QtGui.QDialog):
                                                 q['answer_count'], q['submitter'])
             self.tracking_list.append(rebuilt_question)
 
-    def serializeOptions(self):
-        settings = self.options_dialog.getSettings()
+    def serializeSettings(self):
+        settings = self.settings_dialog.getSettings()
         with open('settings.json', 'w') as fp:
             json.dump(settings, fp, indent = 4)
 
-    def deserializeOptions(self):
+    def deserializeSettings(self):
         try:
             with open('settings.json', 'r') as fp:
                 data = fp.read()
         except EnvironmentError:
+            #no saved settings, return silently
             return
 
-        self.options_dialog.updateSettings(json.loads(data))
+        self.settings_dialog.updateSettings(json.loads(data))
 
     def newAnswer(self, question):
         self.popupUrl = question.url
