@@ -70,7 +70,7 @@ class QuestionDisplayWidget(QtGui.QWidget):
             path = os.path.join('img', SITE_LOGOS[question.site])
             self.site_icon = QtGui.QLabel(self.frame)
             self.site_icon.setGeometry(QtCore.QRect(10, 60, 25, 25))
-            self.site_icon.setStyleSheet("image: url(" + path + "); background-repeat:no-repeat;")
+            self.site_icon.setStyleSheet("image: url(img/" + SITE_LOGOS[question.site] + "); background-repeat:no-repeat;")
 
         self.answers_label = QtGui.QLabel(self.frame)
         self.answers_label.setText('%s answer(s)' % question.answer_count)
