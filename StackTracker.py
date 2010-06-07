@@ -67,7 +67,7 @@ class QuestionDisplayWidget(QtGui.QWidget):
         self.remove_button.clicked.connect(self.remove)
 
         if question.site in SITE_LOGOS:
-            path = os.path.join(os.getcwd(), 'img', SITE_LOGOS[question.site])
+            path = os.path.join('img', SITE_LOGOS[question.site])
             self.site_icon = QtGui.QLabel(self.frame)
             self.site_icon.setGeometry(QtCore.QRect(10, 60, 25, 25))
             self.site_icon.setStyleSheet("image: url(" + path + "); background-repeat:no-repeat;")
