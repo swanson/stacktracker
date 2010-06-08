@@ -505,7 +505,7 @@ class StackTracker(QtGui.QDialog):
                                 (?P<site>(?:[A-Za-z\.])*\.[A-Za-z]*)
                                 /.*?
                                 (?P<id>[0-9]+)
-                                /.*""", re.VERBOSE)
+                                /?.*""", re.VERBOSE)
         match = regex.match(url)
         if match is None:
             return None
