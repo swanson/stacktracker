@@ -313,6 +313,10 @@ class StackTracker(QtGui.QDialog):
         self.question_input.setGeometry(QtCore.QRect(15, 360, 220, 30))
         self.question_input.setPlaceholderText("Enter Question URL...")
 
+        path = os.getcwd()
+        icon = QtGui.QIcon(path + '/img/st_logo.png')
+        self.setWindowIcon(icon)
+
         font = QtGui.QFont()
         font.setPointSize(12)
         font.setBold(True)
@@ -332,8 +336,8 @@ class StackTracker(QtGui.QDialog):
         self.displayQuestions()
 
 
-        path = os.getcwd() 
-        self.notifier = QtGui.QSystemTrayIcon(QtGui.QIcon(path+'/img/st_logo.png'), self)
+
+        self.notifier = QtGui.QSystemTrayIcon(icon, self)
         self.notifier.messageClicked.connect(self.popupClicked)
         self.notifier.activated.connect(self.trayClicked)
         self.notifier.setToolTip('StackTracker')
