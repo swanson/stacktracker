@@ -34,10 +34,11 @@ class QuestionDisplayWidget(QtGui.QWidget):
     def __init__(self, question, parent = None):
         QtGui.QWidget.__init__(self, parent)
         
-        SITE_LOGOS = {'stackoverflow.com':'stackoverflow_logo.svg',
-                      'serverfault.com':'serverfault_logo.svg',
-                      'superuser.com':'superuser_logo.svg',
-                      'meta.stackoverflow.com':'metastackoverflow_logo.svg',
+        SITE_LOGOS = {'stackoverflow.com':'stackoverflow_logo.png',
+                      'serverfault.com':'serverfault_logo.png',
+                      'superuser.com':'superuser_logo.png',
+                      'meta.stackoverflow.com':'metastackoverflow_logo.png',
+                      'stackapps.com':'stackapps_logo.png'
                       }
 
         self.setGeometry(QtCore.QRect(0,0,320,80))
