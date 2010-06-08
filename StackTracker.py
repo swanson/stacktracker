@@ -536,7 +536,7 @@ class WorkerThread(QtCore.QThread):
     def __init__(self, tracking_list, parent = None):
         QtCore.QThread.__init__(self, parent)
         self.tracking_list = tracking_list
-        self.interval = 30000
+        self.interval = 60000
         self.settings = {}
 
     def run(self):
