@@ -63,7 +63,8 @@ class QuestionDisplayWidget(QtGui.QWidget):
         self.remove_button = QtGui.QPushButton(self.frame)
         self.remove_button.setGeometry(QtCore.QRect(295, 7, 25, 25))
         self.remove_button.setText('X')
-        self.remove_button.setStyleSheet("QPushButton{background: #818185; border: 3px solid black; color: white;} QPushButton:hover{background: #c03434;}")
+        self.remove_button.setFont(font)
+        self.remove_button.setStyleSheet("QPushButton{background: #818185; border: 3px solid black; color: white; text-align: center;} QPushButton:hover{background: #c03434;}")
         self.remove_button.clicked.connect(self.remove)
 
         if question.site in SITE_LOGOS:
