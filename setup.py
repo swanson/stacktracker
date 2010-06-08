@@ -8,12 +8,6 @@ def find_file_in_path(filename):
         if os.path.exists(file_path):
             return file_path
         
-dlls = []
-path = 'C:\Python26\Lib\site-packages\PyQt4\plugins\imageformats'
-for files in os.listdir(path):
-    f1 = path + files
-    dlls.append(f1)
-
 setup(name="StackTracker",
       version="0.3",
       author="Matt Swanson",
