@@ -135,8 +135,8 @@ class Question():
         else:
             self.submitter = submitter
 
-        if len(self.title) > 50:
-            self.title = self.title[:48] + '...'
+        if len(self.title) > 45:
+            self.title = self.title[:43] + '...'
 
         if last_queried is None:
             self.last_queried = datetime.utcnow()
@@ -292,7 +292,8 @@ class StackTracker(QtGui.QDialog):
         self.parent = parent
         self.setWindowTitle("StackTracker")
         self.closeEvent = self.cleanUp
-        
+        self.setStyleSheet("QDialog{background: #f0ebe2;}") 
+
         self.settings_dialog = SettingsDialog(self)
         self.settings_dialog.accepted.connect(self.serializeSettings)
         self.settings_dialog.accepted.connect(self.applySettings)
@@ -311,7 +312,7 @@ class StackTracker(QtGui.QDialog):
         self.display_list.clear()
 
         self.question_input = QLineEditWithPlaceholder(self)
-        self.question_input.setGeometry(QtCore.QRect(15, 360, 220, 30))
+        self.question_input.setGeometry(QtCore.QRect(15, 360, 240, 30))
         self.question_input.setPlaceholderText("Enter Question URL...")
 
         path = os.getcwd()
@@ -324,7 +325,7 @@ class StackTracker(QtGui.QDialog):
         font.setFamily("Arial")
 
         self.track_button = QtGui.QPushButton(self)
-        self.track_button.setGeometry(QtCore.QRect(245, 360, 65, 30))
+        self.track_button.setGeometry(QtCore.QRect(265, 360, 65, 30))
         self.track_button.setText("Track")
         self.track_button.clicked.connect(self.addQuestion)
         self.track_button.setFont(font)
