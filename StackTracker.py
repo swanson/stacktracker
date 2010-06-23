@@ -11,6 +11,7 @@ import re
 import time
 import calendar
 import sip
+import StringIO, gzip
 
 class QLineEditWithPlaceholder(QtGui.QLineEdit):
     def __init__(self, parent = None):
@@ -111,7 +112,13 @@ class Question():
                         % (api_base, self.id, StackTracker.API_KEY)
 
         if title is None or answer_count is None or submitter is None or already_answered is None:
-            so_data = json.loads(urllib2.urlopen(self.json_url).read())
+            request = urllib2.Request(self.json_url, headers={'Accept-Encoding': 'gzip'})
+            req_open = urllib2.build_opener()
+            gzipped_data = req_open.open(request).read()
+            buffer = StringIO.StringIO(gzipped_data)
+            gz = gzip.GzipFile(fileobj=buffer)
+            so_data = json.loads(gz.read())
+            #so_data = json.loads(urllib2.urlopen(self.json_url).read())
 
         if title is None:
             self.title = so_data['questions'][0]['title']
@@ -577,7 +584,13 @@ class WorkerThread(QtCore.QThread):
             new_comments = False
             most_recent = question.last_queried
             
-            so_data = json.loads(urllib2.urlopen(question.answers_url).read())
+            request = urllib2.Request(question.answers_url, headers={'Accept-Encoding': 'gzip'})
+            req_open = urllib2.build_opener()
+            gzipped_data = req_open.open(request).read()
+            buffer = StringIO.StringIO(gzipped_data)
+            gz = gzip.GzipFile(fileobj=buffer)
+            so_data = json.loads(gz.read())
+            #so_data = json.loads(urllib2.urlopen(question.answers_url).read())
             question.answer_count = so_data['total']
             for answer in so_data['answers']:
                 updated = datetime.utcfromtimestamp(answer['creation_date'])
@@ -586,7 +599,13 @@ class WorkerThread(QtCore.QThread):
                     if updated > most_recent:
                         most_recent = updated
 
-            so_data = json.loads(urllib2.urlopen(question.comments_url).read())
+            request = urllib2.Request(question.comments_url, headers={'Accept-Encoding': 'gzip'})
+            req_open = urllib2.build_opener()
+            gzipped_data = req_open.open(request).read()
+            buffer = StringIO.StringIO(gzipped_data)
+            gz = gzip.GzipFile(fileobj=buffer)
+            so_data = json.loads(gz.read())
+            #so_data = json.loads(urllib2.urlopen(question.comments_url).read())
             for comment in so_data['comments']:
                 updated = datetime.utcfromtimestamp(comment['creation_date'])
                 if updated > question.last_queried:
