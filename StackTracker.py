@@ -293,7 +293,7 @@ class SettingsDialog(QtGui.QDialog):
 class StackTracker(QtGui.QDialog):
     
     API_KEY = '?key=Jv8tIPTrRUOqRe-5lk4myw'
-    API_VER = '0.8'
+    API_VER = '0.9'
 
     def __init__(self, parent = None):
         QtGui.QDialog.__init__(self)
