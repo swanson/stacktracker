@@ -501,16 +501,12 @@ class StackTracker(QtGui.QDialog):
  
         self.display_list.show()
 
-    def autoRemoveQuestion(self, q):
+    def removeQuestion(self, q, notify = False):
         for question in self.tracking_list[:]:
             if question == q:
                 self.tracking_list.remove(question)
-        self.displayQuestions()
-
-    def removeQuestion(self, q):
-        for question in self.tracking_list[:]:
-            if question == q:
-                self.tracking_list.remove(question)
+                if notify:
+                    self.notify("No longer tracking: %s" % question.title)
                 break
         self.displayQuestions()
 
@@ -630,17 +626,17 @@ class WorkerThread(QtCore.QThread):
                     so_data = json.loads(urllib2.urlopen(question.json_url).read())
                     if 'accepted_answer_id' in so_data['questions'][0]:
                         if not question.already_answered:
-                            self.emit(QtCore.SIGNAL('autoRemove'), question)
+                            self.emit(QtCore.SIGNAL('autoRemove'), question, True)
             elif self.settings['on_inactivity']: #remove if time - last_queried > threshold
                 threshold = timedelta(hours = self.settings['on_inactivity'])
                 for question in tracking_list:
                     if datetime.utcnow() - question.last_queried > threshold:
-                        self.emit(QtCore.SIGNAL('autoRemove'), question)
+                        self.emit(QtCore.SIGNAL('autoRemove'), question, True)
             elif self.settings['on_time']: #remove if time - created > threshold
                 threshold = timedelta(hours = self.settings['on_time'])
                 for question in tracking_list:
                     if datetime.utcnow() - question.created > threshold:
-                        self.emit(QtCore.SIGNAL('autoRemove'), question)
+                        self.emit(QtCore.SIGNAL('autoRemove'), question, True)
 
 if __name__ == "__main__":
     
