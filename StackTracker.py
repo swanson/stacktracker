@@ -547,7 +547,7 @@ class StackTracker(QtGui.QDialog):
         else:
             self.showError("This question is already being tracked.")
             return
-    
+
     def notify(self, msg):
         self.notifier.showMessage("StackTracker", msg, self.worker.timer.interval())
 
