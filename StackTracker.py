@@ -78,7 +78,7 @@ class QuestionDisplayWidget(QtGui.QWidget):
         self.answers_label = QtGui.QLabel(self.frame)
         self.answers_label.setText('%s answer(s)' % question.answer_count)
         self.answers_label.setGeometry(QtCore.QRect(40, 65, 100, 20))
-        
+
         if question.submitter is not None:
             self.submitted_label = QtGui.QLabel(self.frame)
             self.submitted_label.setText('asked by ' + question.submitter)
@@ -114,11 +114,8 @@ class Question():
         if title is None or answer_count is None or submitter is None or already_answered is None:
             request = urllib2.Request(self.json_url, headers={'Accept-Encoding': 'gzip'})
             req_open = urllib2.build_opener()
-            gzipped_data = req_open.open(request).read()
-            buffer = StringIO.StringIO(gzipped_data)
-            gz = gzip.GzipFile(fileobj=buffer)
+            gz = gzip.GzipFile(fileobj=StringIO.StringIO(req_open.open(request).read()))
             so_data = json.loads(gz.read())
-            #so_data = json.loads(urllib2.urlopen(self.json_url).read())
 
         if title is None:
             self.title = so_data['questions'][0]['title']
@@ -254,7 +251,7 @@ class SettingsDialog(QtGui.QDialog):
 
         self.update_layout = QtGui.QVBoxLayout()
         self.update_layout.addWidget(self.update_input)
-        
+
         self.update_interval.setLayout(self.update_layout)
 
         self.buttons = QtGui.QDialogButtonBox(QtGui.QDialogButtonBox.Cancel | QtGui.QDialogButtonBox.Save)
@@ -291,7 +288,7 @@ class SettingsDialog(QtGui.QDialog):
         return settings
 
 class StackTracker(QtGui.QDialog):
-    
+
     API_KEY = '?key=Jv8tIPTrRUOqRe-5lk4myw'
     API_VER = '0.9'
 
@@ -374,9 +371,8 @@ class StackTracker(QtGui.QDialog):
         self.notifier.setContextMenu(self.tray_menu)        
         self.notifier.show()
 
-        self.worker = WorkerThread(self.tracking_list)
-        self.connect(self.worker, QtCore.SIGNAL('newAnswer'), self.newAnswer)
-        self.connect(self.worker, QtCore.SIGNAL('newComment'), self.newComment)
+        self.worker = WorkerThread(self)
+        self.connect(self.worker, QtCore.SIGNAL('updateQuestion'), self.updateQuestion)
         self.connect(self.worker, QtCore.SIGNAL('autoRemove'), self.removeQuestion)
 
         self.applySettings()
@@ -441,7 +437,7 @@ class StackTracker(QtGui.QDialog):
         question_data = json.loads(data)
         for q in question_data['questions']:
             rebuilt_question = Question(q['id'], q['site'], q['title'], q['created'], \
-                                                q['last_queried'], q['already_answered'], 
+                                                q['last_queried'], q['already_answered'], \
                                                 q['answer_count'], q['submitter'])
             self.tracking_list.append(rebuilt_question)
 
@@ -460,13 +456,25 @@ class StackTracker(QtGui.QDialog):
 
         self.settings_dialog.updateSettings(json.loads(data))
 
-    def newAnswer(self, question):
-        self.popupUrl = question.url
-        self.notify("New answer(s): %s" % question.title)
-
-    def newComment(self, question):
-        self.popupUrl = question.url
-        self.notify("New comment(s): %s" % question.title)
+    def updateQuestion(self, question, most_recent, answer_count, new_answer, new_comment):
+        tracked = None
+        for q in self.tracking_list:
+            if q == question:
+                tracked = q
+                break
+        
+        if tracked:
+            tracked.last_queried = most_recent
+            tracked.answer_count = answer_count
+            
+            if new_answer and new_comment:
+                self.notify("New comment(s) and answer(s): %s" % tracked.title)
+            elif new_answer:
+                self.notify("New answer(s): %s" % tracked.title)
+            elif new_comment:
+                self.notify("New comment(s): %s" % tracked.title)
+            
+            self.displayQuestions()
 
     def popupClicked(self):
         QtGui.QDesktopServices.openUrl(QtCore.QUrl(self.popupUrl))
@@ -498,15 +506,13 @@ class StackTracker(QtGui.QDialog):
             if question == q:
                 self.tracking_list.remove(question)
         self.displayQuestions()
-        self.worker.updateTrackingList(self.tracking_list)
 
     def removeQuestion(self, q):
-        for question in self.tracking_list:
+        for question in self.tracking_list[:]:
             if question == q:
                 self.tracking_list.remove(question)
                 break
         self.displayQuestions()
-        self.worker.updateTrackingList(self.tracking_list)
 
     def extractDetails(self, url):
         regex = re.compile("""(?:http://)?(?:www\.)?
@@ -538,7 +544,6 @@ class StackTracker(QtGui.QDialog):
             q = Question(id, site)
             self.tracking_list.append(q)
             self.displayQuestions()
-            self.worker.updateTrackingList(self.tracking_list)
         else:
             self.showError("This question is already being tracked.")
             return
@@ -547,9 +552,9 @@ class StackTracker(QtGui.QDialog):
         self.notifier.showMessage("StackTracker", msg, self.worker.timer.interval())
 
 class WorkerThread(QtCore.QThread):
-    def __init__(self, tracking_list, parent = None):
+    def __init__(self, tracker, parent = None):
         QtCore.QThread.__init__(self, parent)
-        self.tracking_list = tracking_list
+        self.tracker = tracker
         self.interval = 60000
         self.settings = {}
 
@@ -570,16 +575,15 @@ class WorkerThread(QtCore.QThread):
     def applySettings(self, settings):
         self.settings = settings
 
-    def updateTrackingList(self, tracking_list):
-        self.tracking_list = tracking_list
-
     def fetch(self):
         #todo: better handling of multiple new answers with regards
         #notifications and timestamps
 
         #todo: sort by newest answers and break out once we get to the old answers
         #to speed up
-        for question in self.tracking_list:
+        
+        #for question in self.tracking_list:
+        for question in self.tracker.tracking_list[:]:
             new_answers = False
             new_comments = False
             most_recent = question.last_queried
@@ -591,7 +595,7 @@ class WorkerThread(QtCore.QThread):
             gz = gzip.GzipFile(fileobj=buffer)
             so_data = json.loads(gz.read())
             #so_data = json.loads(urllib2.urlopen(question.answers_url).read())
-            question.answer_count = so_data['total']
+            answer_count = so_data['total']
             for answer in so_data['answers']:
                 updated = datetime.utcfromtimestamp(answer['creation_date'])
                 if updated > question.last_queried:
@@ -612,18 +616,14 @@ class WorkerThread(QtCore.QThread):
                     new_comments = True
                     if updated > most_recent:
                         most_recent = updated
-            
-            if new_answers:
-                self.emit(QtCore.SIGNAL('newAnswer'), question)
-            if new_comments:
-                self.emit(QtCore.SIGNAL('newComment'), question)
 
-            question.last_queried = most_recent
+            self.emit(QtCore.SIGNAL('updateQuestion'), question, most_recent, answer_count, \
+                                                    new_answers, new_comments)
 
         self.autoRemoveQuestions()
 
     def autoRemoveQuestions(self):
-        tracking_list = copy.deepcopy(self.tracking_list)
+        tracking_list = copy.deepcopy(self.tracker.tracking_list)
         if self.settings['auto_remove']: #if autoremove is enabled
             if self.settings['on_accepted']: #remove when accepted
                 for question in tracking_list:
