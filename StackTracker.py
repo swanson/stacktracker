@@ -112,10 +112,11 @@ class Question():
                         % (api_base, self.id, StackTracker.API_KEY)
 
         if title is None or answer_count is None or submitter is None or already_answered is None:
-            request = urllib2.Request(self.json_url, headers={'Accept-Encoding': 'gzip'})
-            req_open = urllib2.build_opener()
-            gz = gzip.GzipFile(fileobj=StringIO.StringIO(req_open.open(request).read()))
-            so_data = json.loads(gz.read())
+            #request = urllib2.Request(self.json_url, headers={'Accept-Encoding': 'gzip'})
+            #req_open = urllib2.build_opener()
+            #gz = gzip.GzipFile(fileobj=StringIO.StringIO(req_open.open(request).read()))
+            #so_data = json.loads(gz.read())
+            APIHelper.callAPI(self.json_url)
 
         if title is None:
             self.title = so_data['questions'][0]['title']
@@ -468,10 +469,13 @@ class StackTracker(QtGui.QDialog):
             tracked.answer_count = answer_count
             
             if new_answer and new_comment:
+                self.popupUrl = tracked.url
                 self.notify("New comment(s) and answer(s): %s" % tracked.title)
             elif new_answer:
+                self.popupUrl = tracked.url
                 self.notify("New answer(s): %s" % tracked.title)
             elif new_comment:
+                self.popupUrl = tracked.url
                 self.notify("New comment(s): %s" % tracked.title)
             
             self.displayQuestions()
@@ -547,6 +551,19 @@ class StackTracker(QtGui.QDialog):
     def notify(self, msg):
         self.notifier.showMessage("StackTracker", msg, self.worker.timer.interval())
 
+class APIHelper(object):
+
+    @staticmethod
+    def callAPI(url):
+        """Make an API call, decompress the gzipped response, return json object"""
+        request = urllib2.Request(url, headers={'Accept-Encoding': 'gzip'})
+        req_open = urllib2.build_opener()
+        gzipped_data = req_open.open(request).read()
+        buffer = StringIO.StringIO(gzipped_data)
+        gzipper = gzip.GzipFile(fileobj=buffer)
+        return json.loads(gzipper.read())
+
+
 class WorkerThread(QtCore.QThread):
     def __init__(self, tracker, parent = None):
         QtCore.QThread.__init__(self, parent)
@@ -584,12 +601,13 @@ class WorkerThread(QtCore.QThread):
             new_comments = False
             most_recent = question.last_queried
             
-            request = urllib2.Request(question.answers_url, headers={'Accept-Encoding': 'gzip'})
-            req_open = urllib2.build_opener()
-            gzipped_data = req_open.open(request).read()
-            buffer = StringIO.StringIO(gzipped_data)
-            gz = gzip.GzipFile(fileobj=buffer)
-            so_data = json.loads(gz.read())
+            #request = urllib2.Request(question.answers_url, headers={'Accept-Encoding': 'gzip'})
+            #req_open = urllib2.build_opener()
+            #gzipped_data = req_open.open(request).read()
+            #buffer = StringIO.StringIO(gzipped_data)
+            #gz = gzip.GzipFile(fileobj=buffer)
+            #so_data = json.loads(gz.read())
+            so_data = APIHelper.callAPI(question.answers_url)
             #so_data = json.loads(urllib2.urlopen(question.answers_url).read())
             answer_count = so_data['total']
             for answer in so_data['answers']:
@@ -599,12 +617,13 @@ class WorkerThread(QtCore.QThread):
                     if updated > most_recent:
                         most_recent = updated
 
-            request = urllib2.Request(question.comments_url, headers={'Accept-Encoding': 'gzip'})
-            req_open = urllib2.build_opener()
-            gzipped_data = req_open.open(request).read()
-            buffer = StringIO.StringIO(gzipped_data)
-            gz = gzip.GzipFile(fileobj=buffer)
-            so_data = json.loads(gz.read())
+            #request = urllib2.Request(question.comments_url, headers={'Accept-Encoding': 'gzip'})
+            #req_open = urllib2.build_opener()
+            #gzipped_data = req_open.open(request).read()
+            #buffer = StringIO.StringIO(gzipped_data)
+            #gz = gzip.GzipFile(fileobj=buffer)
+            #so_data = json.loads(gz.read())
+            so_data = APIHelper.callAPI(question.comments_url)
             #so_data = json.loads(urllib2.urlopen(question.comments_url).read())
             for comment in so_data['comments']:
                 updated = datetime.utcfromtimestamp(comment['creation_date'])
