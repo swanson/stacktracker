@@ -116,7 +116,7 @@ class Question():
             #req_open = urllib2.build_opener()
             #gz = gzip.GzipFile(fileobj=StringIO.StringIO(req_open.open(request).read()))
             #so_data = json.loads(gz.read())
-            APIHelper.callAPI(self.json_url)
+            so_data = APIHelper.callAPI(self.json_url)
 
         if title is None:
             self.title = so_data['questions'][0]['title']
