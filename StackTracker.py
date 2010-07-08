@@ -74,6 +74,11 @@ class QuestionDisplayWidget(QtGui.QWidget):
             self.site_icon = QtGui.QLabel(self.frame)
             self.site_icon.setGeometry(QtCore.QRect(10, 60, 25, 25))
             self.site_icon.setStyleSheet("image: url(img/" + SITE_LOGOS[question.site] + "); background-repeat:no-repeat;")
+        else:
+            self.site_icon = QtGui.QLabel(self.frame)
+            self.site_icon.setGeometry(QtCore.QRect(10, 60, 25, 25))
+            self.site_icon.setStyleSheet("image: url(img/default.png); background-repeat:no-repeat;")
+
 
         self.answers_label = QtGui.QLabel(self.frame)
         self.answers_label.setText('%s answer(s)' % question.answer_count)
@@ -103,10 +108,6 @@ class Question():
         base = 'http://%s/questions/' % (self.site)
         self.url = base + self.id
 
-        self.answers_url = '%s/questions/%s/answers%s' \
-                        % (api_base, self.id, StackTracker.API_KEY)
-        self.comments_url = '%s/questions/%s/comments%s' \
-                        % (api_base, self.id, StackTracker.API_KEY)
         self.json_url = '%s/questions/%s/%s' \
                         % (api_base, self.id, StackTracker.API_KEY)
 
@@ -148,6 +149,14 @@ class Question():
             self.created = datetime.utcnow()
         else:
             self.created = datetime.utcfromtimestamp(created)
+
+        self.answers_url = '%s/questions/%s/answers%s&min=%s' \
+                        % (api_base, self.id, StackTracker.API_KEY, 
+                                int(calendar.timegm(self.created.timetuple())))
+                   
+        self.comments_url = '%s/questions/%s/comments%s&min=%s' \
+                        % (api_base, self.id, StackTracker.API_KEY, 
+                                int(calendar.timegm(self.created.timetuple())))
 
     def __repr__(self):
         return "%s: %s" % (self.id, self.title)
@@ -589,7 +598,6 @@ class WorkerThread(QtCore.QThread):
             new_answers = False
             new_comments = False
             most_recent = question.last_queried
-
             so_data = APIHelper.callAPI(question.answers_url)
             answer_count = so_data['total']
             for answer in so_data['answers']:
