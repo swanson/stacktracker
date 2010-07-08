@@ -14,6 +14,11 @@ import sip
 import StringIO, gzip
 
 class QLineEditWithPlaceholder(QtGui.QLineEdit):
+    """
+    Custom Qt widget that is required since PyQt does not yet
+    support Qt4.7 -- which adds native placeholder text functionality to
+    QLineEdits
+    """
     def __init__(self, parent = None):
         QtGui.QLineEdit.__init__(self, parent)
         self.placeholder = None
@@ -23,6 +28,7 @@ class QLineEditWithPlaceholder(QtGui.QLineEdit):
         self.update()
 
     def paintEvent(self, event):
+        """Overload paintEvent to draw placeholder text under certain conditions"""
         QtGui.QLineEdit.paintEvent(self, event)
         if self.placeholder and not self.hasFocus() and not self.text():
             painter = QtGui.QPainter(self)
@@ -32,6 +38,7 @@ class QLineEditWithPlaceholder(QtGui.QLineEdit):
             painter.end()
 
 class QuestionDisplayWidget(QtGui.QWidget):
+    """Custom Qt Widget to display pretty representations of Question objects"""
     def __init__(self, question, parent = None):
         QtGui.QWidget.__init__(self, parent)
 
@@ -97,6 +104,7 @@ class QuestionDisplayWidget(QtGui.QWidget):
         QtGui.QDesktopServices.openUrl(QtCore.QUrl(self.question.url))
 
 class Question():
+    """Application specific representation of a StackExchange question"""
     def __init__(self, question_id, site, title = None, created = None, \
                         last_queried = None, already_answered = None, \
                         answer_count = None, submitter = None):
@@ -165,6 +173,10 @@ class Question():
         return ((self.site == other.site) and (self.id == other.id))
 
 class QSpinBoxRadioButton(QtGui.QRadioButton):
+    """
+    Custom Qt Widget that allows for a spinbox to be used in
+    conjunction with a radio button
+    """
     def __init__(self, prefix = '', suffix = '', parent = None):
         QtGui.QRadioButton.__init__(self, parent)
         self.prefix = QtGui.QLabel(prefix)
@@ -213,6 +225,12 @@ class QSpinBoxRadioButton(QtGui.QRadioButton):
         self.spinbox.setValue(value)
 
 class SettingsDialog(QtGui.QDialog):
+    """
+    Settings window that allows the user to customize the application
+
+    Currently supports auto-removing questions and changing the refresh
+    interval.
+    """
     def __init__(self, parent = None):
         QtGui.QDialog.__init__(self, parent)
         self.setFixedSize(QtCore.QSize(400,250))
@@ -267,6 +285,7 @@ class SettingsDialog(QtGui.QDialog):
         self.setLayout(self.layout)
 
     def updateSettings(self, settings):
+        """Restore saved settings from a dictionary"""
         #todo throw this in a try block
         self.auto_remove.setChecked(settings['auto_remove'])
         if settings['on_time']:
@@ -278,6 +297,7 @@ class SettingsDialog(QtGui.QDialog):
         self.update_input.setValue(settings['on_time'])
 
     def getSettings(self):
+        """Returns a dictionary of currently selected settings"""
         settings = {}
         settings['auto_remove'] = self.auto_remove.isChecked()
         settings['on_time'] = self.time_option.value() if self.time_option.isChecked() else False
@@ -287,6 +307,11 @@ class SettingsDialog(QtGui.QDialog):
         return settings
 
 class StackTracker(QtGui.QDialog):
+    """
+    The 'main' dialog window for the application.  Displays
+    the list of tracked questions and has the input controls for
+    adding new questions.
+    """
 
     API_KEY = '?key=Jv8tIPTrRUOqRe-5lk4myw'
     API_VER = '0.9'
@@ -379,24 +404,29 @@ class StackTracker(QtGui.QDialog):
         self.worker.start()
 
     def applySettings(self):
+        """Send new settings to worker thread"""
         settings = self.settings_dialog.getSettings()
         interval = settings['update_interval'] * 1000 #convert to milliseconds
         self.worker.setInterval(interval)
         self.worker.applySettings(settings)
 
     def trayClicked(self, event):
+        """Shortcut to show list of question, not supported in Mac OS X"""
         if event == QtGui.QSystemTrayIcon.DoubleClick:
             self.showWindow()
 
     def showWindow(self):
+        """Show the list of tracked questions"""
         self.show()
         self.showMaximized()
         self.displayQuestions()
 
     def showSettings(self):
+        """Show the settings dialog"""
         self.settings_dialog.show()
 
     def showAbout(self):
+        """Show About Page, as if anyone actually cares about who made this..."""
         s = """
             <h3>StackTracker</h3>
             <p>A desktop notifier using the StackExchange API built with PyQt4</p>
@@ -406,27 +436,38 @@ class StackTracker(QtGui.QDialog):
         QtGui.QMessageBox(QtGui.QMessageBox.Information, "About",  s).exec_()
 
     def showError(self, text):
+        """
+        Pop-up an error box with a message
+
+        params:
+            text => msg to display
+        """
         QtGui.QMessageBox(QtGui.QMessageBox.Critical, "Error!", text).exec_()
 
     def exitFromTray(self):
+        """Event handler for 'Exit' menu option"""
         self.serializeQuestions()
         self.serializeSettings()
-	self.parent.exit()
+        self.parent.exit()
 
     def cleanUp(self, event):
+        """Perform last-minute operations before exiting"""
         self.serializeQuestions()
         self.serializeSettings()
 
     def serializeQuestions(self):
-        datetime_to_json = lambda obj: calendar.timegm(obj.utctimetuple()) if isinstance(obj, datetime) else None
+        """Persist currently tracked questions in external JSON file"""
         a = []
         for q in self.tracking_list:
             a.append(q.__dict__)
-
+        
+        #handler to convert datetime objects into epoch timestamps
+        datetime_to_json = lambda obj: calendar.timegm(obj.utctimetuple()) if isinstance(obj, datetime) else None
         with open('tracking.json', 'w') as fp:
                 json.dump({'questions':a}, fp, default = datetime_to_json, indent = 4)
 
     def deserializeQuestions(self):
+        """Restore saved tracked questions from external JSON file"""
         try:
             with open('tracking.json', 'r') as fp:
                 data = fp.read()
@@ -442,11 +483,13 @@ class StackTracker(QtGui.QDialog):
             self.tracking_list.append(rebuilt_question)
 
     def serializeSettings(self):
+        """Persist application settings in external JSON file"""
         settings = self.settings_dialog.getSettings()
         with open('settings.json', 'w') as fp:
             json.dump(settings, fp, indent = 4)
 
     def deserializeSettings(self):
+        """Restore saved application settings from external JSON file"""
         try:
             with open('settings.json', 'r') as fp:
                 data = fp.read()
@@ -457,6 +500,7 @@ class StackTracker(QtGui.QDialog):
         self.settings_dialog.updateSettings(json.loads(data))
 
     def updateQuestion(self, question, most_recent, answer_count, new_answer, new_comment):
+        """Update questions in the tracking list with data fetched from worker thread"""
         tracked = None
         for q in self.tracking_list:
             if q == question:
@@ -480,10 +524,13 @@ class StackTracker(QtGui.QDialog):
             self.displayQuestions()
 
     def popupClicked(self):
+        """Open the question in user's default browser"""
         if self.popupUrl:
             QtGui.QDesktopServices.openUrl(QtCore.QUrl(self.popupUrl))
 
     def displayQuestions(self):
+        """Render the currently tracked questions in the display list"""
+        #hack to fix random disappearing questions
         self.display_list = QtGui.QListWidget(self)
         self.display_list.resize(QtCore.QSize(350, 350))
         self.display_list.setStyleSheet("QListWidget{show-decoration-selected: 0; background: black;}")
@@ -491,6 +538,7 @@ class StackTracker(QtGui.QDialog):
         self.display_list.setVerticalScrollMode(QtGui.QAbstractItemView.ScrollPerPixel)
         self.display_list.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
         self.display_list.clear()
+        #/end hack
 
         n = 0
         for question in self.tracking_list:
@@ -506,6 +554,14 @@ class StackTracker(QtGui.QDialog):
         self.display_list.show()
 
     def removeQuestion(self, q, notify = False):
+        """
+        Remove a question from the tracking list
+
+        params:
+            notify => indicate if the user should be alerted that the
+                      question is no longer being tracked, useful for
+                      auto-removing
+        """
         for question in self.tracking_list[:]:
             if question == q:
                 self.tracking_list.remove(question)
@@ -515,6 +571,8 @@ class StackTracker(QtGui.QDialog):
         self.displayQuestions()
 
     def extractDetails(self, url):
+        """Strip out the site domain from given URL"""
+        #todo: consider using StackAuth
         regex = re.compile("""(?:http://)?(?:www\.)?
                                 (?P<site>(?:[A-Za-z\.])*\.[A-Za-z]*)
                                 /.*?
@@ -531,6 +589,10 @@ class StackTracker(QtGui.QDialog):
         return id, site
 
     def addQuestion(self):
+        """
+        Add a new question to the list of tracked questions and render
+        it on the display list
+        """
         url = self.question_input.text()
         self.question_input.clear()
         details = self.extractDetails(str(url))
@@ -552,6 +614,7 @@ class StackTracker(QtGui.QDialog):
         self.notifier.showMessage("StackTracker", msg, 20000)
 
 class APIHelper(object):
+    """Helper class for API related functionality"""
 
     @staticmethod
     def callAPI(url):
@@ -589,12 +652,6 @@ class WorkerThread(QtCore.QThread):
         self.settings = settings
 
     def fetch(self):
-        #todo: better handling of multiple new answers with regards
-        #notifications and timestamps
-
-        #todo: sort by newest answers and break out once we get to the old answers
-        #to speed up
-
         for question in self.tracker.tracking_list[:]:
             new_answers = False
             new_comments = False
@@ -622,13 +679,13 @@ class WorkerThread(QtCore.QThread):
         self.autoRemoveQuestions()
 
     def autoRemoveQuestions(self):
-        if self.settings['auto_remove']: #if autoremove is enabled
-            if self.settings['on_inactivity']: #remove if time - last_queried > threshold
+        if self.settings['auto_remove']:
+            if self.settings['on_inactivity']:
                 threshold = timedelta(hours = self.settings['on_inactivity'])
                 for question in self.tracker.tracking_list[:]:
                     if datetime.utcnow() - question.last_queried > threshold:
                         self.emit(QtCore.SIGNAL('autoRemove'), question, True)
-            elif self.settings['on_time']: #remove if time - created > threshold
+            elif self.settings['on_time']:
                 threshold = timedelta(hours = self.settings['on_time'])
                 for question in self.tracker.tracking_list[:]:
                     if datetime.utcnow() - question.created > threshold:
