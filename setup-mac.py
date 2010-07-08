@@ -14,10 +14,11 @@ DATA_FILES = [('img', ['img/st_logo.png',
                              'img/serverfault_logo.png',
                              'img/superuser_logo.png',
                              'img/stackapps_logo.png',
+			     'img/default.png'
                              ]
                      )]
 
-OPTIONS = {'argv_emulation': True}
+OPTIONS = {'argv_emulation': True, 'iconfile': 'st.icns'}
 
 setup(
     app=APP,
