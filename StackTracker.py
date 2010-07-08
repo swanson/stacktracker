@@ -409,8 +409,9 @@ class StackTracker(QtGui.QDialog):
         QtGui.QMessageBox(QtGui.QMessageBox.Critical, "Error!", text).exec_()
 
     def exitFromTray(self):
-        self.cleanUp(None)
-        self.parent.exit()
+        self.serializeQuestions()
+        self.serializeSettings()
+	self.parent.exit()
 
     def cleanUp(self, event):
         self.serializeQuestions()
