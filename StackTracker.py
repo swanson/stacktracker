@@ -12,6 +12,7 @@ import time
 import calendar
 import sip
 import StringIO, gzip
+from Queue import Queue
 
 class QLineEditWithPlaceholder(QtGui.QLineEdit):
     """
@@ -306,6 +307,11 @@ class SettingsDialog(QtGui.QDialog):
 
         return settings
 
+class Notification(object):
+    def __init__(self, msg, url = None):
+        self.msg = msg
+        self.url = url
+
 class StackTracker(QtGui.QDialog):
     """
     The 'main' dialog window for the application.  Displays
@@ -366,6 +372,9 @@ class StackTracker(QtGui.QDialog):
 
         self.displayQuestions()
 
+        self.queue_timer = QtCore.QTimer(self)
+        self.queue_timer.timeout.connect(self.processQueue)
+        self.notify_queue = Queue()
 
 
         self.notifier = QtGui.QSystemTrayIcon(icon, self)
@@ -398,6 +407,7 @@ class StackTracker(QtGui.QDialog):
         self.worker = WorkerThread(self)
         self.connect(self.worker, QtCore.SIGNAL('updateQuestion'), self.updateQuestion)
         self.connect(self.worker, QtCore.SIGNAL('autoRemove'), self.removeQuestion)
+        self.connect(self.worker, QtCore.SIGNAL('done'), self.startQueueProcess)
 
         self.applySettings()
 
@@ -512,14 +522,14 @@ class StackTracker(QtGui.QDialog):
             tracked.answer_count = answer_count
 
             if new_answer and new_comment:
-                self.popupUrl = tracked.url
-                self.notify("New comment(s) and answer(s): %s" % tracked.title)
+                self.addToNotificationQueue(Notification("New comment(s) and answer(s): %s" \
+                                                            % tracked.title, tracked.url))
             elif new_answer:
-                self.popupUrl = tracked.url
-                self.notify("New answer(s): %s" % tracked.title)
+                self.addToNotificationQueue(Notification("New answer(s): %s" \
+                                                            % tracked.title, tracked.url))
             elif new_comment:
-                self.popupUrl = tracked.url
-                self.notify("New comment(s): %s" % tracked.title)
+                self.addToNotificationQueue(Notification("New comment(s): %s" \
+                                                            % tracked.title, tracked.url))
 
             self.displayQuestions()
 
@@ -566,7 +576,8 @@ class StackTracker(QtGui.QDialog):
             if question == q:
                 self.tracking_list.remove(question)
                 if notify:
-                    self.notify("No longer tracking: %s" % question.title)
+                    self.addToNotificationQueue(Notification("No longer tracking: %s" \
+                                                                % question.title))
                 break
         self.displayQuestions()
 
@@ -610,8 +621,24 @@ class StackTracker(QtGui.QDialog):
             self.showError("This question is already being tracked.")
             return
 
-    def notify(self, msg):
-        self.notifier.showMessage("StackTracker", msg, 20000)
+    def addToNotificationQueue(self, notification):
+        self.notify_queue.put(notification)
+
+    def startQueueProcess(self):
+        if not self.queue_timer.isActive():
+            self.queue_timer.start(5000)
+            self.processQueue()
+
+    def processQueue(self):
+        if self.notify_queue.empty():
+            if self.queue_timer.isActive():
+                self.queue_timer.stop()
+        else:
+            self.notify(self.notify_queue.get())
+
+    def notify(self, notification):
+        self.popupUrl = notification.url
+        self.notifier.showMessage("StackTracker", notification.msg, 20000)
 
 class APIHelper(object):
     """Helper class for API related functionality"""
@@ -677,6 +704,7 @@ class WorkerThread(QtCore.QThread):
                                                     new_answers, new_comments)
 
         self.autoRemoveQuestions()
+        self.emit(QtCore.SIGNAL('done'))
 
     def autoRemoveQuestions(self):
         if self.settings['auto_remove']:
