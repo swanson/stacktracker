@@ -113,12 +113,12 @@ class Question():
         self.site = site
 
         api_base = 'http://api.%s/%s' \
-                        % (self.site, StackTracker.API_VER)
+                        % (self.site, APIHelper.API_VER)
         base = 'http://%s/questions/' % (self.site)
         self.url = base + self.id
 
         self.json_url = '%s/questions/%s/%s' \
-                        % (api_base, self.id, StackTracker.API_KEY)
+                        % (api_base, self.id, APIHelper.API_KEY)
 
         if title is None or answer_count is None or submitter is None or already_answered is None:
             so_data = APIHelper.callAPI(self.json_url)
@@ -160,11 +160,11 @@ class Question():
             self.created = datetime.utcfromtimestamp(created)
 
         self.answers_url = '%s/questions/%s/answers%s&min=%s' \
-                        % (api_base, self.id, StackTracker.API_KEY, 
+                        % (api_base, self.id, APIHelper.API_KEY, 
                                 int(calendar.timegm(self.created.timetuple())))
                    
         self.comments_url = '%s/questions/%s/comments%s&min=%s' \
-                        % (api_base, self.id, StackTracker.API_KEY, 
+                        % (api_base, self.id, APIHelper.API_KEY, 
                                 int(calendar.timegm(self.created.timetuple())))
 
     def __repr__(self):
@@ -319,8 +319,6 @@ class StackTracker(QtGui.QDialog):
     adding new questions.
     """
 
-    API_KEY = '?key=Jv8tIPTrRUOqRe-5lk4myw'
-    API_VER = '0.9'
 
     def __init__(self, parent = None):
         QtGui.QDialog.__init__(self)
@@ -642,6 +640,9 @@ class StackTracker(QtGui.QDialog):
 
 class APIHelper(object):
     """Helper class for API related functionality"""
+    
+    API_KEY = '?key=Jv8tIPTrRUOqRe-5lk4myw'
+    API_VER = '1.0'
 
     @staticmethod
     def callAPI(url):
