@@ -22,6 +22,7 @@ setup(name="StackTracker",
                              'img/serverfault_logo.png',
                              'img/superuser_logo.png',
                              'img/stackapps_logo.png',
+                             'img/default.png'
                              ]
                      ),
                     ('imageformats', [
