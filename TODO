@@ -1,7 +1,2 @@
-By July 9 - BETA RELEASE
-- add error handling to API call method
-DONE - add placeholder question icon graphic 
-DONE - try out improved api urls, activity and timestamps
-DONE - add Mac icon
-DONE - multi alert queue -- ugh
-- logo, write-up and video
+- redo build scripts
+- add better linux packaging

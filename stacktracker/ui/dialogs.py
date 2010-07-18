@@ -8,8 +8,8 @@ import os
 import re
 import calendar
 from Queue import Queue
-from ui.extensions import QSpinBoxRadioButton, QLineEditWithPlaceholder, QuestionDisplayWidget
-from core import WorkerThread, APIHelper, Question, Notification
+from stacktracker.ui.extensions import QSpinBoxRadioButton, QLineEditWithPlaceholder, QuestionDisplayWidget
+from stacktracker.core import WorkerThread, APIHelper, Question, Notification
 
 class StackTracker(QtGui.QDialog):
     """
